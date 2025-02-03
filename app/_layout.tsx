@@ -1,6 +1,7 @@
-import '../global.css'
+import '../style.css'
 
 import { useEffect } from 'react'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import {
     adaptNavigationTheme,
     MD3DarkTheme,
@@ -14,6 +15,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 
 import { SupabaseProvider } from '@/contexts/supabase.context'
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
 import {
     DarkTheme as NavigationDarkTheme,
     DefaultTheme as NavigationDefaultTheme,
@@ -68,6 +70,7 @@ export default function RootLayout() {
         colors: {
             ...MD3LightTheme.colors,
             ...LightTheme.colors,
+            primary: '#3797EF',
         },
         fonts: {
             ...MD3LightTheme.fonts,
@@ -84,6 +87,7 @@ export default function RootLayout() {
         colors: {
             ...MD3DarkTheme.colors,
             ...DarkTheme.colors,
+            primary: '#3797EF',
         },
         fonts: {
             ...MD3DarkTheme.fonts,
@@ -98,23 +102,27 @@ export default function RootLayout() {
         colorScheme === 'dark' ? combinedDarkTheme : combinedLightTheme
 
     return (
-        <SupabaseProvider>
-            <PaperProvider theme={theme}>
-                <ThemeProvider value={theme}>
-                    <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Screen
-                            name="(auth)"
-                            options={{
-                                headerShown: false,
-                            }}
-                        />
-                        <Stack.Screen
-                            name="(protected)"
-                            options={{ headerShown: false }}
-                        />
-                    </Stack>
-                </ThemeProvider>
-            </PaperProvider>
-        </SupabaseProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <BottomSheetModalProvider>
+                <SupabaseProvider>
+                    <PaperProvider theme={theme}>
+                        <ThemeProvider value={theme}>
+                            <Stack screenOptions={{ headerShown: false }}>
+                                <Stack.Screen
+                                    name="(auth)"
+                                    options={{
+                                        headerShown: false,
+                                    }}
+                                />
+                                <Stack.Screen
+                                    name="(protected)"
+                                    options={{ headerShown: false }}
+                                />
+                            </Stack>
+                        </ThemeProvider>
+                    </PaperProvider>
+                </SupabaseProvider>
+            </BottomSheetModalProvider>
+        </GestureHandlerRootView>
     )
 }

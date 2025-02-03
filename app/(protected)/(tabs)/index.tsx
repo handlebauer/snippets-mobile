@@ -1,11 +1,25 @@
-import { View } from 'react-native'
-import { Text } from 'react-native-paper'
+import { StyleSheet, View } from 'react-native'
+import { Text, useTheme } from 'react-native-paper'
 
 export default function TabOneScreen() {
+    const theme = useTheme()
+
     return (
-        <View className="flex-1 items-center justify-center bg-background">
+        <View
+            style={[
+                styles.container,
+                { backgroundColor: theme.colors.background },
+            ]}
+        >
             <Text>Tab One</Text>
-            <View className="my-8 h-px w-4/5 bg-separator-light dark:bg-separator-dark" />
         </View>
     )
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+})

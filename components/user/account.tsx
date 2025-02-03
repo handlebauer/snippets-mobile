@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Alert, StyleSheet, View } from 'react-native'
-import { Button, TextInput } from 'react-native-paper'
+import { Alert, View } from 'react-native'
+import { Button, Text, TextInput } from 'react-native-paper'
+
+import { router } from 'expo-router'
 
 import { Session } from '@supabase/supabase-js'
 
@@ -79,34 +81,70 @@ export function Account({ session }: { session: Session }) {
         }
     }
 
+    async function handleSignOut() {
+        try {
+            await supabase.auth.signOut()
+            router.replace('/(auth)')
+        } catch (error) {
+            if (error instanceof Error) {
+                Alert.alert(error.message)
+            }
+        }
+    }
+
     return (
-        <View style={styles.container}>
-            <View style={[styles.verticallySpaced, styles.mt20]}>
+        <View className="space-y-4 mt-4">
+            <View>
+                <Text
+                    variant="bodySmall"
+                    className="text-gray-600 dark:text-gray-400 mb-1 ml-1"
+                >
+                    Email
+                </Text>
                 <TextInput
-                    label="Email"
                     mode="outlined"
                     value={session?.user?.email}
                     disabled
-                />
-            </View>
-            <View style={styles.verticallySpaced}>
-                <TextInput
-                    label="Username"
-                    mode="outlined"
-                    value={username || ''}
-                    onChangeText={(text: string) => setUsername(text)}
-                />
-            </View>
-            <View style={styles.verticallySpaced}>
-                <TextInput
-                    label="Website"
-                    mode="outlined"
-                    value={website || ''}
-                    onChangeText={(text: string) => setWebsite(text)}
+                    style={{ backgroundColor: 'transparent' }}
+                    left={<TextInput.Icon icon="email" />}
                 />
             </View>
 
-            <View style={[styles.verticallySpaced, styles.mt20]}>
+            <View>
+                <Text
+                    variant="bodySmall"
+                    className="text-gray-600 dark:text-gray-400 mb-1 ml-1"
+                >
+                    Username
+                </Text>
+                <TextInput
+                    mode="outlined"
+                    value={username || ''}
+                    onChangeText={setUsername}
+                    placeholder="Enter your username"
+                    style={{ backgroundColor: 'transparent' }}
+                    left={<TextInput.Icon icon="account" />}
+                />
+            </View>
+
+            <View>
+                <Text
+                    variant="bodySmall"
+                    className="text-gray-600 dark:text-gray-400 mb-1 ml-1"
+                >
+                    Website
+                </Text>
+                <TextInput
+                    mode="outlined"
+                    value={website || ''}
+                    onChangeText={setWebsite}
+                    placeholder="Enter your website"
+                    style={{ backgroundColor: 'transparent' }}
+                    left={<TextInput.Icon icon="web" />}
+                />
+            </View>
+
+            <View className="mt-6 space-y-3">
                 <Button
                     mode="contained"
                     loading={loading}
@@ -118,31 +156,21 @@ export function Account({ session }: { session: Session }) {
                             avatar_url: avatarUrl,
                         })
                     }
+                    textColor="white"
+                    buttonColor="#111"
+                    style={{ borderRadius: 0 }}
                 >
-                    {loading ? 'Loading ...' : 'Update'}
+                    {loading ? 'Updating...' : 'Update Profile'}
                 </Button>
-            </View>
 
-            <View style={styles.verticallySpaced}>
-                <Button mode="outlined" onPress={() => supabase.auth.signOut()}>
+                <Button
+                    mode="outlined"
+                    onPress={handleSignOut}
+                    style={{ borderRadius: 0 }}
+                >
                     Sign Out
                 </Button>
             </View>
         </View>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        marginTop: 40,
-        padding: 12,
-    },
-    verticallySpaced: {
-        paddingTop: 4,
-        paddingBottom: 4,
-        alignSelf: 'stretch',
-    },
-    mt20: {
-        marginTop: 20,
-    },
-})

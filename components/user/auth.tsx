@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Alert, View } from 'react-native'
-import { Button, Text, TextInput } from 'react-native-paper'
+import { Alert, StyleSheet, View } from 'react-native'
+import { Button, Text, TextInput, useTheme } from 'react-native-paper'
 
 import { router } from 'expo-router'
 
@@ -11,6 +11,7 @@ export function Auth() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const theme = useTheme()
 
     async function handleSignIn() {
         setLoading(true)
@@ -37,14 +38,22 @@ export function Auth() {
     }
 
     return (
-        <View className="flex-1 bg-white dark:bg-black justify-center px-8">
-            <View className="items-center mb-8">
-                <Text variant="headlineLarge" className="font-bold">
+        <View
+            style={[
+                styles.container,
+                { backgroundColor: theme.colors.background },
+            ]}
+        >
+            <View style={styles.titleContainer}>
+                <Text
+                    variant="headlineLarge"
+                    style={[styles.title, { fontFamily: 'SpaceMono' }]}
+                >
                     snippets
                 </Text>
             </View>
 
-            <View className="space-y-4">
+            <View style={styles.formContainer}>
                 <TextInput
                     mode="outlined"
                     label="Email"
@@ -54,7 +63,7 @@ export function Auth() {
                     autoCapitalize="none"
                     keyboardType="email-address"
                     left={<TextInput.Icon icon="email" />}
-                    style={{ backgroundColor: 'transparent' }}
+                    style={styles.input}
                     theme={{
                         colors: {
                             primary: '#3797EF',
@@ -71,7 +80,7 @@ export function Auth() {
                     secureTextEntry
                     autoCapitalize="none"
                     left={<TextInput.Icon icon="lock" />}
-                    style={{ backgroundColor: 'transparent' }}
+                    style={styles.input}
                     theme={{
                         colors: {
                             primary: '#3797EF',
@@ -79,24 +88,25 @@ export function Auth() {
                     }}
                 />
             </View>
-            <View className="mt-3">
+
+            <View style={styles.buttonContainer}>
                 <Button
                     mode="contained"
                     onPress={handleSignIn}
                     disabled={loading || !email || !password}
                     loading={loading}
-                    className="h-12 justify-center"
+                    contentStyle={styles.button}
                     textColor="white"
                     buttonColor="#111"
-                    style={{ borderRadius: 0 }}
+                    style={styles.buttonReset}
                 >
                     Log in
                 </Button>
 
-                <View className="flex-row justify-center items-center mt-4">
+                <View style={styles.signupContainer}>
                     <Text
                         variant="bodyMedium"
-                        className="text-gray-500 dark:text-gray-400"
+                        style={{ color: theme.colors.onSurfaceVariant }}
                     >
                         Don't have an account?{' '}
                     </Text>
@@ -115,7 +125,7 @@ export function Auth() {
                     mode="text"
                     compact
                     onPress={() => {}}
-                    className="mt-4"
+                    style={styles.forgotButton}
                     textColor="#3797EF"
                 >
                     Forgot password?
@@ -124,3 +134,44 @@ export function Auth() {
         </View>
     )
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 32,
+    },
+    titleContainer: {
+        marginBottom: 64,
+        alignItems: 'center',
+    },
+    title: {
+        fontWeight: 'bold',
+        fontSize: 42,
+    },
+    formContainer: {
+        gap: 12,
+    },
+    input: {
+        backgroundColor: 'transparent',
+        height: 44,
+    },
+    buttonContainer: {
+        marginTop: 32,
+    },
+    button: {
+        height: 44,
+    },
+    buttonReset: {
+        borderRadius: 4,
+    },
+    signupContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 32,
+    },
+    forgotButton: {
+        marginTop: 16,
+    },
+})

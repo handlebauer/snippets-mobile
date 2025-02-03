@@ -4,12 +4,8 @@ export default function AuthLayout() {
     return (
         <Stack
             screenOptions={{
-                headerShown: true,
-                headerTitle: 'Sign In',
-                headerStyle: {
-                    backgroundColor: 'transparent',
-                },
-                headerShadowVisible: false,
+                headerShown: false,
+                animation: 'fade',
             }}
         />
     )
