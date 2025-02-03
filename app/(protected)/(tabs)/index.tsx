@@ -13,7 +13,7 @@ export default function TabOneScreen() {
                 lightColor="#eee"
                 darkColor="rgba(255,255,255,0.1)"
             />
-            <EditScreenInfo path="app/(tabs)/index.tsx" />
+            <EditScreenInfo path="app/(protected)/(tabs)/index.tsx" />
         </Surface>
     )
 }

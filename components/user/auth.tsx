@@ -16,7 +16,7 @@ export default function Auth() {
         setLoading(true)
         try {
             await signInWithPassword(email, password)
-            router.replace('/(tabs)')
+            router.replace('/(protected)/(tabs)')
         } catch (error) {
             if (error instanceof Error) Alert.alert(error.message)
         } finally {
