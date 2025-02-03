@@ -6,7 +6,7 @@ export default {
         orientation: 'portrait',
         icon: './assets/images/icon.png',
         newArchEnabled: true,
-        scheme: 'myapp',
+        scheme: 'snippets',
         userInterfaceStyle: 'automatic',
         splash: {
             image: './assets/images/splash-icon.png',
@@ -14,6 +14,8 @@ export default {
             backgroundColor: '#ffffff',
         },
         ios: {
+            bundleIdentifier: 'change-when-ready',
+            usesAppleSignIn: true,
             supportsTablet: true,
         },
         android: {
@@ -27,7 +29,8 @@ export default {
             output: 'single',
             favicon: './assets/images/favicon.png',
         },
-        plugins: ['expo-router'],
+        plugins: ['expo-router', 'expo-apple-authentication'],
+        bundleIdentifier: 'change-when-ready',
         experiments: {
             typedRoutes: true,
             reactServerFunctions: true,

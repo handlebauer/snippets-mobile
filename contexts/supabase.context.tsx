@@ -1,33 +1,41 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { Linking } from 'react-native'
 
 import { SplashScreen } from 'expo-router'
 
-import { Session, User } from '@supabase/supabase-js'
+import { Provider, Session, User } from '@supabase/supabase-js'
 
 import { supabase } from '@/lib/supabase.client'
 
 SplashScreen.preventAutoHideAsync()
 
-type SupabaseContextProps = {
+type SupabaseProviderProps = {
+    children: React.ReactNode
+}
+
+export interface SupabaseContextType {
     user: User | null
     session: Session | null
     initialized?: boolean
     signUp: (email: string, password: string) => Promise<void>
     signInWithPassword: (email: string, password: string) => Promise<void>
+    signInWithIdToken: (params: {
+        provider: Provider
+        token: string
+    }) => Promise<void>
     signOut: () => Promise<void>
+    signInWithGithub: () => Promise<void>
 }
 
-type SupabaseProviderProps = {
-    children: React.ReactNode
-}
-
-const SupabaseContext = createContext<SupabaseContextProps>({
+export const SupabaseContext = createContext<SupabaseContextType>({
     user: null,
     session: null,
     initialized: false,
     signUp: async () => {},
     signInWithPassword: async () => {},
+    signInWithIdToken: async () => {},
     signOut: async () => {},
+    signInWithGithub: async () => {},
 })
 
 export const useSupabase = () => useContext(SupabaseContext)
@@ -67,7 +75,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
             email,
             password,
         })
-        if (error) throw error
+        if (error instanceof Error) throw error
     }
 
     const signInWithPassword = async (email: string, password: string) => {
@@ -75,25 +83,61 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
             email,
             password,
         })
-        if (error) throw error
+        if (error instanceof Error) throw error
+    }
+
+    const signInWithIdToken = async ({
+        provider,
+        token,
+    }: {
+        provider: Provider
+        token: string
+    }) => {
+        const { error } = await supabase.auth.signInWithIdToken({
+            provider,
+            token,
+        })
+        if (error instanceof Error) throw error
     }
 
     const signOut = async () => {
         const { error } = await supabase.auth.signOut()
+        if (error instanceof Error) throw error
+    }
+
+    const signInWithGithub = async () => {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'github',
+            options: {
+                redirectTo: 'snippets://auth/callback',
+                skipBrowserRedirect: true,
+            },
+        })
+
         if (error) throw error
+        if (!data?.url) throw new Error('No OAuth URL returned')
+
+        try {
+            await Linking.openURL(data.url)
+        } catch (e) {
+            throw e
+        }
+    }
+
+    const value = {
+        user,
+        session,
+        initialized,
+        signUp,
+        signInWithPassword,
+        signInWithIdToken,
+        signOut,
+        signInWithGithub,
+        supabase,
     }
 
     return (
-        <SupabaseContext.Provider
-            value={{
-                user,
-                session,
-                initialized,
-                signUp,
-                signInWithPassword,
-                signOut,
-            }}
-        >
+        <SupabaseContext.Provider value={value}>
             {children}
         </SupabaseContext.Provider>
     )
