@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native'
 
 import { Link, Stack } from 'expo-router'
 
-import { Text, View } from '@/components/themed'
+import { Text, View } from '@/components/base/themed'
 
 export default function NotFoundScreen() {
     return (

@@ -4,9 +4,10 @@ import { Pressable } from 'react-native'
 import { Link, Tabs } from 'expo-router'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 
-import { useClientOnlyValue } from '@/components/use-client-only-value'
-import { useColorScheme } from '@/components/use-color-scheme'
 import Colors from '@/constants/colors'
+
+import { useClientOnlyValue } from '@/components/base/use-client-only-value'
+import { useColorScheme } from '@/components/base/use-color-scheme'
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {

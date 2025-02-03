@@ -3,9 +3,9 @@ import { StyleSheet } from 'react-native'
 
 import Colors from '@/constants/colors'
 
-import { ExternalLink } from './external-link'
-import { MonoText } from './styled-text'
-import { Text, View } from './themed'
+import { Text, View } from '../base/themed'
+import { ExternalLink } from '../external-link'
+import { MonoText } from '../styled-text'
 
 export default function EditScreenInfo({ path }: { path: string }) {
     return (

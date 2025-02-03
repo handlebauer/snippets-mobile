@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native'
 import { Surface } from 'react-native-paper'
 
-import Auth from '@/components/auth'
+import Auth from '@/components/user/auth'
 
 export default function AuthScreen() {
     return (

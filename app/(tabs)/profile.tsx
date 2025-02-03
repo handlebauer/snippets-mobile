@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { StyleSheet } from 'react-native'
 import { Surface } from 'react-native-paper'
 
-import Account from '@/components/account'
 import { Session } from '@supabase/supabase-js'
 
 import { supabase } from '@/lib/supabase.client'
+import Account from '@/components/user/account'
 
 export default function ProfileScreen() {
     const [session, setSession] = useState<Session | null>(null)

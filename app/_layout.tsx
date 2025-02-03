@@ -11,13 +11,14 @@ import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 
-import { useColorScheme } from '@/components/use-color-scheme'
 import { SupabaseProvider } from '@/contexts/supabase.context'
 import {
     DarkTheme as NavigationDarkTheme,
     DefaultTheme as NavigationDefaultTheme,
     ThemeProvider,
 } from '@react-navigation/native'
+
+import { useColorScheme } from '@/components/base/use-color-scheme'
 
 export {
     // Catch any errors thrown by the Layout component.
