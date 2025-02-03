@@ -11,15 +11,13 @@ import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 
+import { useColorScheme } from '@/components/use-color-scheme'
+import { SupabaseProvider } from '@/contexts/supabase.context'
 import {
     DarkTheme as NavigationDarkTheme,
     DefaultTheme as NavigationDefaultTheme,
     ThemeProvider,
 } from '@react-navigation/native'
-
-import 'react-native-reanimated'
-
-import { useColorScheme } from '@/components/useColorScheme'
 
 export {
     // Catch any errors thrown by the Layout component.
@@ -27,8 +25,7 @@ export {
 } from 'expo-router'
 
 export const unstable_settings = {
-    // Ensure that reloading on `/modal` keeps a back button present.
-    initialRouteName: '(tabs)',
+    initialRouteName: '(auth)',
 }
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -51,15 +48,11 @@ export default function RootLayout() {
         }
     }, [loaded])
 
+    const colorScheme = useColorScheme()
+
     if (!loaded) {
         return null
     }
-
-    return <RootLayoutNav />
-}
-
-function RootLayoutNav() {
-    const colorScheme = useColorScheme()
 
     const { LightTheme, DarkTheme } = adaptNavigationTheme({
         reactNavigationLight: NavigationDefaultTheme,
@@ -102,19 +95,23 @@ function RootLayoutNav() {
         colorScheme === 'dark' ? combinedDarkTheme : combinedLightTheme
 
     return (
-        <PaperProvider theme={theme}>
-            <ThemeProvider value={theme}>
-                <Stack>
-                    <Stack.Screen
-                        name="(tabs)"
-                        options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                        name="modal"
-                        options={{ presentation: 'modal' }}
-                    />
-                </Stack>
-            </ThemeProvider>
-        </PaperProvider>
+        <SupabaseProvider>
+            <PaperProvider theme={theme}>
+                <ThemeProvider value={theme}>
+                    <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen
+                            name="(auth)"
+                            options={{
+                                headerShown: false,
+                            }}
+                        />
+                        <Stack.Screen
+                            name="(tabs)"
+                            options={{ headerShown: false }}
+                        />
+                    </Stack>
+                </ThemeProvider>
+            </PaperProvider>
+        </SupabaseProvider>
     )
 }
