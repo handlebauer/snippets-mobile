@@ -1,6 +1,8 @@
 import React from 'react'
 import { StyleSheet } from 'react-native'
+
 import { Link, Stack } from 'expo-router'
+
 import { Text, View } from '@/components/Themed'
 
 export default function NotFoundScreen() {

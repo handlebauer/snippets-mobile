@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native'
 import { Surface, Text } from 'react-native-paper'
+
 import EditScreenInfo from '@/components/EditScreenInfo'
 import { View } from '@/components/Themed'
 
