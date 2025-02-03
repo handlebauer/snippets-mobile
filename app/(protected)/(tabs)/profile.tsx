@@ -5,7 +5,7 @@ import { Surface } from 'react-native-paper'
 import { Session } from '@supabase/supabase-js'
 
 import { supabase } from '@/lib/supabase.client'
-import Account from '@/components/user/account'
+import { Account } from '@/components/user/account'
 
 export default function ProfileScreen() {
     const [session, setSession] = useState<Session | null>(null)
@@ -24,7 +24,6 @@ export default function ProfileScreen() {
         </Surface>
     )
 }
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,

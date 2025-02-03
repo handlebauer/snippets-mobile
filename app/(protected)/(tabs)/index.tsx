@@ -1,32 +1,11 @@
-import { StyleSheet } from 'react-native'
-import { Surface, Text } from 'react-native-paper'
-
-import { View } from '@/components/base/themed'
-import EditScreenInfo from '@/components/expo/edit-screen-info'
+import { View } from 'react-native'
+import { Text } from 'react-native-paper'
 
 export default function TabOneScreen() {
     return (
-        <Surface style={styles.container}>
-            <Text variant="headlineMedium">Tab One</Text>
-            <View
-                style={styles.separator}
-                lightColor="#eee"
-                darkColor="rgba(255,255,255,0.1)"
-            />
-            <EditScreenInfo path="app/(protected)/(tabs)/index.tsx" />
-        </Surface>
+        <View className="flex-1 items-center justify-center bg-background">
+            <Text>Tab One</Text>
+            <View className="my-8 h-px w-4/5 bg-separator-light dark:bg-separator-dark" />
+        </View>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    separator: {
-        marginVertical: 30,
-        height: 1,
-        width: '80%',
-    },
-})

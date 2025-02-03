@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
-import { Alert, StyleSheet, View } from 'react-native'
-import { Button, TextInput } from 'react-native-paper'
+import { Alert, View } from 'react-native'
+import { Button, Text, TextInput } from 'react-native-paper'
 
 import { router } from 'expo-router'
 
 import { useSupabase } from '@/contexts/supabase.context'
 
-export default function Auth() {
+export function Auth() {
     const { signInWithPassword, signUp } = useSupabase()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -37,66 +37,90 @@ export default function Auth() {
     }
 
     return (
-        <View style={styles.container}>
-            <View style={[styles.verticallySpaced, styles.mt20]}>
+        <View className="flex-1 bg-white dark:bg-black justify-center px-8">
+            <View className="items-center mb-8">
+                <Text variant="headlineLarge" className="font-bold">
+                    snippets
+                </Text>
+            </View>
+
+            <View className="space-y-4">
                 <TextInput
-                    label="Email"
                     mode="outlined"
-                    left={<TextInput.Icon icon="email" />}
-                    onChangeText={setEmail}
+                    label="Email"
+                    placeholder="Phone number, username or email"
                     value={email}
-                    placeholder="email@address.com"
+                    onChangeText={setEmail}
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    left={<TextInput.Icon icon="email" />}
+                    style={{ backgroundColor: 'transparent' }}
+                    theme={{
+                        colors: {
+                            primary: '#3797EF',
+                        },
+                    }}
                 />
-            </View>
-            <View style={styles.verticallySpaced}>
+
                 <TextInput
-                    label="Password"
                     mode="outlined"
-                    left={<TextInput.Icon icon="lock" />}
-                    onChangeText={setPassword}
-                    value={password}
-                    secureTextEntry
+                    label="Password"
                     placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
                     autoCapitalize="none"
+                    left={<TextInput.Icon icon="lock" />}
+                    style={{ backgroundColor: 'transparent' }}
+                    theme={{
+                        colors: {
+                            primary: '#3797EF',
+                        },
+                    }}
                 />
             </View>
-            <View style={[styles.verticallySpaced, styles.mt20]}>
+            <View className="mt-3">
                 <Button
                     mode="contained"
-                    loading={loading}
-                    disabled={loading}
                     onPress={handleSignIn}
-                >
-                    Sign in
-                </Button>
-            </View>
-            <View style={styles.verticallySpaced}>
-                <Button
-                    mode="outlined"
+                    disabled={loading || !email || !password}
                     loading={loading}
-                    disabled={loading}
-                    onPress={handleSignUp}
+                    className="h-12 justify-center"
+                    textColor="white"
+                    buttonColor="#111"
+                    style={{ borderRadius: 0 }}
                 >
-                    Sign up
+                    Log in
+                </Button>
+
+                <View className="flex-row justify-center items-center mt-4">
+                    <Text
+                        variant="bodyMedium"
+                        className="text-gray-500 dark:text-gray-400"
+                    >
+                        Don't have an account?{' '}
+                    </Text>
+                    <Button
+                        mode="text"
+                        compact
+                        onPress={handleSignUp}
+                        disabled={loading}
+                        textColor="#3797EF"
+                    >
+                        Sign up
+                    </Button>
+                </View>
+
+                <Button
+                    mode="text"
+                    compact
+                    onPress={() => {}}
+                    className="mt-4"
+                    textColor="#3797EF"
+                >
+                    Forgot password?
                 </Button>
             </View>
         </View>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        marginTop: 40,
-        padding: 12,
-    },
-    verticallySpaced: {
-        paddingTop: 4,
-        paddingBottom: 4,
-        alignSelf: 'stretch',
-    },
-    mt20: {
-        marginTop: 20,
-    },
-})

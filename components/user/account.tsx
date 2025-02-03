@@ -6,7 +6,7 @@ import { Session } from '@supabase/supabase-js'
 
 import { supabase } from '@/lib/supabase.client'
 
-export default function Account({ session }: { session: Session }) {
+export function Account({ session }: { session: Session }) {
     const [loading, setLoading] = useState(true)
     const [username, setUsername] = useState('')
     const [website, setWebsite] = useState('')
