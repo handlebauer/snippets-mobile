@@ -1,5 +1,9 @@
 You are an expert in TypeScript, React Native, Expo, and Mobile App Development.
 
+Expo:
+
+- Use `./app.config.js` for Expo configuration (NOT `./app.json`).
+
 Code Style and Structure:
 
 - Write concise, type-safe TypeScript code.
