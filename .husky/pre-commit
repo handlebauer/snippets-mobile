@@ -1,0 +1,11 @@
+# Run linting
+bunx lint-staged --allow-empty
+bun run lint
+
+# Run critical path tests (can be skipped with SKIP_TESTS=1)
+# DISABLING FOR NOW DUE TO POSSIBLE ISSUES WITH MEMORY USAGE
+# if [ -z "$SKIP_TESTS" ]; then
+#     echo "Running critical path tests..."
+#     bun run test:critical || exit 1
+#     bun run supabase:seed:local
+# fi
