@@ -157,12 +157,47 @@ export default function Index() {
             newChannel.subscribe(async status => {
                 if (status === 'SUBSCRIBED') {
                     console.log('👋 Connected to signaling channel')
-                    await newChannel.track({
-                        online_at: new Date().toISOString(),
-                    })
-                    console.log('✅ Presence tracked')
+                    try {
+                        await newChannel.track({
+                            online_at: new Date().toISOString(),
+                        })
+                        console.log('✅ Presence tracked successfully')
+
+                        // Log the current presence state
+                        const presenceState = newChannel.presenceState()
+                        console.log(
+                            '📱 Current presence state:',
+                            JSON.stringify(presenceState, null, 2),
+                        )
+                    } catch (error) {
+                        console.error('❌ Error tracking presence:', error)
+                    }
+                } else {
+                    console.log('📡 Channel status:', status)
                 }
             })
+
+            // Listen for presence changes
+            newChannel.on('presence', { event: 'sync' }, () => {
+                const state = newChannel.presenceState()
+                console.log('🔄 Presence sync:', JSON.stringify(state, null, 2))
+            })
+
+            newChannel.on(
+                'presence',
+                { event: 'join' },
+                ({ key, newPresences }) => {
+                    console.log('👋 Presence join:', key, newPresences)
+                },
+            )
+
+            newChannel.on(
+                'presence',
+                { event: 'leave' },
+                ({ key, leftPresences }) => {
+                    console.log('👋 Presence leave:', key, leftPresences)
+                },
+            )
 
             channel.current = newChannel
 
