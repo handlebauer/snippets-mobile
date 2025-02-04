@@ -17,6 +17,9 @@ export default {
             bundleIdentifier: 'change-when-ready',
             usesAppleSignIn: true,
             supportsTablet: true,
+            infoPlist: {
+                ITSAppUsesNonExemptEncryption: false,
+            },
         },
         android: {
             adaptiveIcon: {
@@ -29,7 +32,11 @@ export default {
             output: 'single',
             favicon: './assets/images/favicon.png',
         },
-        plugins: ['expo-router', 'expo-apple-authentication'],
+        plugins: [
+            'expo-router',
+            'expo-apple-authentication',
+            '@config-plugins/react-native-webrtc',
+        ],
         bundleIdentifier: 'change-when-ready',
         experiments: {
             typedRoutes: true,
@@ -38,6 +45,9 @@ export default {
         extra: {
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+            eas: {
+                projectId: 'abd6e45d-9048-467e-a2c9-597877588671',
+            },
         },
     },
 }
