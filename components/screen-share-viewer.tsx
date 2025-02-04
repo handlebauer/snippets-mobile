@@ -1,5 +1,12 @@
 import React from 'react'
-import { Animated, Easing, Platform, StyleSheet, View } from 'react-native'
+import {
+    Animated,
+    Easing,
+    Platform,
+    StatusBar,
+    StyleSheet,
+    View,
+} from 'react-native'
 import { Button, Text, useTheme } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RTCView } from 'react-native-webrtc'
@@ -99,125 +106,157 @@ export function ScreenShareViewer({
     }
 
     return (
-        <SafeAreaView
-            style={[
-                styles.safeArea,
-                { backgroundColor: theme.colors.background },
-            ]}
-            edges={['top']}
-        >
-            <View style={styles.container}>
-                <View style={styles.contentContainer}>
-                    <MaterialCommunityIcons
-                        name="laptop"
-                        size={48}
-                        color={theme.colors.onBackground}
-                        style={styles.icon}
+        <View style={styles.fullScreen}>
+            {state.streamURL ? (
+                <View style={styles.streamWrapper}>
+                    <StatusBar
+                        translucent={true}
+                        backgroundColor="transparent"
+                        barStyle="light-content"
                     />
-                    <Text
-                        variant="headlineSmall"
-                        style={[
-                            styles.title,
-                            { color: theme.colors.onBackground },
-                        ]}
-                    >
-                        Connect Device
-                    </Text>
+                    <View style={styles.streamContainer}>
+                        <RTCView
+                            streamURL={state.streamURL}
+                            style={styles.stream}
+                            objectFit="cover"
+                        />
+                    </View>
+                </View>
+            ) : (
+                <SafeAreaView
+                    style={[
+                        styles.safeArea,
+                        { backgroundColor: theme.colors.background },
+                    ]}
+                    edges={['top']}
+                >
+                    <View style={styles.container}>
+                        <View style={styles.contentContainer}>
+                            <MaterialCommunityIcons
+                                name="laptop"
+                                size={48}
+                                color={theme.colors.onBackground}
+                                style={styles.icon}
+                            />
+                            <Text
+                                variant="headlineSmall"
+                                style={[
+                                    styles.title,
+                                    { color: theme.colors.onBackground },
+                                ]}
+                            >
+                                Connect Device
+                            </Text>
 
-                    <View
-                        style={[
-                            styles.codeCard,
-                            { backgroundColor: theme.dark ? '#000' : '#fff' },
-                        ]}
-                    >
-                        <Text
-                            variant="headlineMedium"
-                            style={[
-                                styles.codeText,
-                                { color: theme.colors.onBackground },
-                            ]}
-                        >
-                            {state.sessionCode}
-                        </Text>
-                        {state.statusMessage && (
-                            <View style={styles.statusContainer}>
-                                <Animated.View
-                                    style={{ transform: [{ rotate: spin }] }}
+                            <View
+                                style={[
+                                    styles.codeCard,
+                                    {
+                                        backgroundColor: theme.dark
+                                            ? '#000'
+                                            : '#fff',
+                                    },
+                                ]}
+                            >
+                                <Text
+                                    variant="headlineMedium"
+                                    style={[
+                                        styles.codeText,
+                                        { color: theme.colors.onBackground },
+                                    ]}
                                 >
-                                    <MaterialCommunityIcons
-                                        name="loading"
-                                        size={14}
-                                        color={theme.colors.onSurfaceVariant}
-                                    />
-                                </Animated.View>
+                                    {state.sessionCode}
+                                </Text>
+                                {state.statusMessage && (
+                                    <View style={styles.statusContainer}>
+                                        <Animated.View
+                                            style={{
+                                                transform: [{ rotate: spin }],
+                                            }}
+                                        >
+                                            <MaterialCommunityIcons
+                                                name="loading"
+                                                size={14}
+                                                color={
+                                                    theme.colors
+                                                        .onSurfaceVariant
+                                                }
+                                            />
+                                        </Animated.View>
+                                        <Text
+                                            variant="bodyMedium"
+                                            style={[
+                                                styles.statusText,
+                                                {
+                                                    color: theme.colors
+                                                        .onSurfaceVariant,
+                                                },
+                                            ]}
+                                        >
+                                            Waiting for connection...
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={styles.urlContainer}>
+                                <MaterialCommunityIcons
+                                    name="link"
+                                    size={20}
+                                    color={theme.colors.onSurfaceVariant}
+                                    style={styles.linkIcon}
+                                />
                                 <Text
                                     variant="bodyMedium"
                                     style={[
-                                        styles.statusText,
+                                        styles.urlText,
                                         {
                                             color: theme.colors
                                                 .onSurfaceVariant,
                                         },
                                     ]}
                                 >
-                                    Waiting for connection...
+                                    Open this URL in your browser:
                                 </Text>
                             </View>
-                        )}
+                            <Text
+                                variant="bodyMedium"
+                                style={[
+                                    styles.url,
+                                    { color: theme.colors.primary },
+                                ]}
+                            >
+                                https://snippet.is
+                            </Text>
+
+                            {(state.statusMessage === STATUS_MESSAGES.ENDED ||
+                                !state.streamURL) && (
+                                <Button
+                                    mode="outlined"
+                                    onPress={onReset}
+                                    style={styles.button}
+                                    contentStyle={styles.buttonContent}
+                                >
+                                    New Session
+                                </Button>
+                            )}
+                        </View>
                     </View>
-
-                    <View style={styles.urlContainer}>
-                        <MaterialCommunityIcons
-                            name="link"
-                            size={20}
-                            color={theme.colors.onSurfaceVariant}
-                            style={styles.linkIcon}
-                        />
-                        <Text
-                            variant="bodyMedium"
-                            style={[
-                                styles.urlText,
-                                { color: theme.colors.onSurfaceVariant },
-                            ]}
-                        >
-                            Open this URL in your browser:
-                        </Text>
-                    </View>
-                    <Text
-                        variant="bodyMedium"
-                        style={[styles.url, { color: theme.colors.primary }]}
-                    >
-                        https://snippet.is
-                    </Text>
-
-                    {(state.statusMessage === STATUS_MESSAGES.ENDED ||
-                        !state.streamURL) && (
-                        <Button
-                            mode="outlined"
-                            onPress={onReset}
-                            style={styles.button}
-                            contentStyle={styles.buttonContent}
-                        >
-                            New Session
-                        </Button>
-                    )}
-                </View>
-            </View>
-
-            {state.streamURL && (
-                <View style={styles.streamContainer}>
-                    <RTCView
-                        streamURL={state.streamURL}
-                        style={styles.stream}
-                        objectFit="contain"
-                    />
-                </View>
+                </SafeAreaView>
             )}
-        </SafeAreaView>
+        </View>
     )
 }
 
 const styles = StyleSheet.create({
+    fullScreen: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#000',
+    },
     safeArea: {
         flex: 1,
     },
@@ -302,15 +341,23 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 24,
     },
-    streamContainer: {
+    streamWrapper: {
         position: 'absolute',
+        width: '100%',
+        height: '100%',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
+    },
+    streamContainer: {
+        flex: 1,
         backgroundColor: '#000',
+        marginTop: Platform.OS === 'ios' ? -60 : 0,
     },
     stream: {
         flex: 1,
+        width: '100%',
+        height: '100%',
     },
 })
