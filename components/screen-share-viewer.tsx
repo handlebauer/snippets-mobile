@@ -7,7 +7,7 @@ import {
     StyleSheet,
     View,
 } from 'react-native'
-import { Button, Text, useTheme } from 'react-native-paper'
+import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RTCView } from 'react-native-webrtc'
 
@@ -28,7 +28,6 @@ export function ScreenShareViewer({
     onStartSession,
     onReset,
 }: ScreenShareViewerProps) {
-    const theme = useTheme()
     const spinValue = React.useRef(new Animated.Value(0)).current
 
     React.useEffect(() => {
@@ -57,194 +56,135 @@ export function ScreenShareViewer({
 
     if (!state.sessionCode) {
         return (
-            <SafeAreaView
-                style={[
-                    styles.safeArea,
-                    { backgroundColor: theme.colors.background },
-                ]}
-                edges={['top']}
-            >
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <View style={styles.container}>
                     <View style={styles.contentContainer}>
-                        <MaterialCommunityIcons
-                            name="laptop"
-                            size={48}
-                            color={theme.colors.onBackground}
-                            style={styles.icon}
-                        />
-                        <Text
-                            variant="headlineSmall"
-                            style={[
-                                styles.title,
-                                { color: theme.colors.onBackground },
-                            ]}
-                        >
-                            Connect Ddevice
-                        </Text>
-                        <Text
-                            variant="bodyLarge"
-                            style={[
-                                styles.subtitle,
-                                { color: theme.colors.onSurfaceVariant },
-                            ]}
-                        >
-                            Enter this code in the companion web app to connect
-                            your device
-                        </Text>
-                        <Button
-                            mode="contained"
-                            onPress={onStartSession}
-                            style={styles.button}
-                            contentStyle={styles.buttonContent}
-                        >
-                            Start
-                        </Button>
+                        <View style={styles.card}>
+                            <Text variant="headlineLarge" style={styles.title}>
+                                snippets
+                            </Text>
+                            <MaterialCommunityIcons
+                                name="laptop"
+                                size={48}
+                                color="#FFFFFF"
+                                style={styles.icon}
+                            />
+                            <Text variant="titleLarge" style={styles.subtitle}>
+                                Connect Device
+                            </Text>
+                            <Text
+                                variant="bodyLarge"
+                                style={styles.description}
+                            >
+                                Start a new session to get your pairing code
+                            </Text>
+                            <Button
+                                mode="contained"
+                                onPress={onStartSession}
+                                style={styles.button}
+                                contentStyle={styles.buttonContent}
+                                buttonColor="#2A2A2A"
+                                textColor="#FFFFFF"
+                            >
+                                Start Session
+                            </Button>
+                        </View>
                     </View>
                 </View>
             </SafeAreaView>
         )
     }
 
-    return (
-        <View style={styles.fullScreen}>
-            {state.streamURL ? (
-                <View style={styles.streamWrapper}>
-                    <StatusBar
-                        translucent={true}
-                        backgroundColor="transparent"
-                        barStyle="light-content"
+    if (state.streamURL) {
+        return (
+            <View style={styles.fullScreen}>
+                <StatusBar
+                    translucent={true}
+                    backgroundColor="transparent"
+                    barStyle="light-content"
+                />
+                <View style={styles.streamContainer}>
+                    <RTCView
+                        streamURL={state.streamURL}
+                        style={styles.stream}
+                        objectFit="cover"
                     />
-                    <View style={styles.streamContainer}>
-                        <RTCView
-                            streamURL={state.streamURL}
-                            style={styles.stream}
-                            objectFit="cover"
-                        />
-                    </View>
                 </View>
-            ) : (
-                <SafeAreaView
-                    style={[
-                        styles.safeArea,
-                        { backgroundColor: theme.colors.background },
-                    ]}
-                    edges={['top']}
-                >
-                    <View style={styles.container}>
-                        <View style={styles.contentContainer}>
-                            <MaterialCommunityIcons
-                                name="laptop"
-                                size={48}
-                                color={theme.colors.onBackground}
-                                style={styles.icon}
-                            />
+            </View>
+        )
+    }
+
+    return (
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <View style={styles.container}>
+                <View style={styles.contentContainer}>
+                    <View style={styles.card}>
+                        <Text variant="headlineLarge" style={styles.title}>
+                            snippets
+                        </Text>
+                        <MaterialCommunityIcons
+                            name="laptop"
+                            size={48}
+                            color="#FFFFFF"
+                            style={styles.icon}
+                        />
+                        <Text variant="titleLarge" style={styles.subtitle}>
+                            Your Code
+                        </Text>
+                        <View style={styles.codeContainer}>
                             <Text
-                                variant="headlineSmall"
-                                style={[
-                                    styles.title,
-                                    { color: theme.colors.onBackground },
-                                ]}
+                                variant="headlineLarge"
+                                style={styles.codeText}
                             >
-                                Connect Device
+                                {state.sessionCode}
                             </Text>
-
-                            <View
-                                style={[
-                                    styles.codeCard,
-                                    {
-                                        backgroundColor: theme.dark
-                                            ? '#000'
-                                            : '#fff',
-                                    },
-                                ]}
-                            >
-                                <Text
-                                    variant="headlineMedium"
-                                    style={[
-                                        styles.codeText,
-                                        { color: theme.colors.onBackground },
-                                    ]}
-                                >
-                                    {state.sessionCode}
-                                </Text>
-                                {state.statusMessage && (
-                                    <View style={styles.statusContainer}>
-                                        <Animated.View
-                                            style={{
-                                                transform: [{ rotate: spin }],
-                                            }}
-                                        >
-                                            <MaterialCommunityIcons
-                                                name="loading"
-                                                size={14}
-                                                color={
-                                                    theme.colors
-                                                        .onSurfaceVariant
-                                                }
-                                            />
-                                        </Animated.View>
-                                        <Text
-                                            variant="bodyMedium"
-                                            style={[
-                                                styles.statusText,
-                                                {
-                                                    color: theme.colors
-                                                        .onSurfaceVariant,
-                                                },
-                                            ]}
-                                        >
-                                            Waiting for connection...
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-
-                            <View style={styles.urlContainer}>
-                                <MaterialCommunityIcons
-                                    name="link"
-                                    size={20}
-                                    color={theme.colors.onSurfaceVariant}
-                                    style={styles.linkIcon}
-                                />
-                                <Text
-                                    variant="bodyMedium"
-                                    style={[
-                                        styles.urlText,
-                                        {
-                                            color: theme.colors
-                                                .onSurfaceVariant,
-                                        },
-                                    ]}
-                                >
-                                    Open this URL in your browser:
-                                </Text>
-                            </View>
-                            <Text
-                                variant="bodyMedium"
-                                style={[
-                                    styles.url,
-                                    { color: theme.colors.primary },
-                                ]}
-                            >
-                                https://snippet.is
-                            </Text>
-
-                            {(state.statusMessage === STATUS_MESSAGES.ENDED ||
-                                !state.streamURL) && (
-                                <Button
-                                    mode="outlined"
-                                    onPress={onReset}
-                                    style={styles.button}
-                                    contentStyle={styles.buttonContent}
-                                >
-                                    New Session
-                                </Button>
+                            {state.statusMessage && (
+                                <View style={styles.statusContainer}>
+                                    <Animated.View
+                                        style={{
+                                            transform: [{ rotate: spin }],
+                                        }}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name="loading"
+                                            size={14}
+                                            color="#808080"
+                                        />
+                                    </Animated.View>
+                                    <Text style={styles.statusText}>
+                                        {state.statusMessage}
+                                    </Text>
+                                </View>
                             )}
                         </View>
+
+                        <View style={styles.urlContainer}>
+                            <MaterialCommunityIcons
+                                name="link"
+                                size={20}
+                                color="#808080"
+                            />
+                            <Text style={styles.urlText}>
+                                Enter this code at:
+                            </Text>
+                        </View>
+                        <Text style={styles.url}>https://snippet.is</Text>
+
+                        {state.statusMessage === STATUS_MESSAGES.ENDED && (
+                            <Button
+                                mode="outlined"
+                                onPress={onReset}
+                                style={styles.button}
+                                contentStyle={styles.buttonContent}
+                                textColor="#FFFFFF"
+                            >
+                                New Session
+                            </Button>
+                        )}
                     </View>
-                </SafeAreaView>
-            )}
-        </View>
+                </View>
+            </View>
+        </SafeAreaView>
     )
 }
 
@@ -259,96 +199,115 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
+        backgroundColor: '#121212',
+        width: '100%',
     },
     container: {
         flex: 1,
         justifyContent: 'center',
-        padding: 24,
+        width: '100%',
+        padding: 8,
     },
     contentContainer: {
         width: '100%',
-        maxWidth: 400,
+        alignItems: 'stretch',
+        justifyContent: 'center',
+    },
+    card: {
+        marginHorizontal: 8,
+        backgroundColor: '#1E1E1E',
+        padding: 20,
+        borderRadius: 20,
         alignItems: 'center',
-        alignSelf: 'center',
-    },
-    icon: {
-        marginBottom: 24,
-    },
-    title: {
-        textAlign: 'center',
-        fontWeight: '600',
-        marginBottom: 12,
-    },
-    subtitle: {
-        textAlign: 'center',
-        marginBottom: 32,
-        paddingHorizontal: 24,
-    },
-    codeCard: {
         width: '100%',
-        padding: 24,
-        borderRadius: 16,
-        alignItems: 'center',
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 12,
             },
             android: {
-                elevation: 2,
+                elevation: 8,
             },
         }),
     },
+    icon: {
+        marginVertical: 20,
+    },
+    title: {
+        color: '#FFFFFF',
+        fontSize: 28,
+        fontFamily: 'monospace',
+        marginBottom: 24,
+    },
+    subtitle: {
+        color: '#FFFFFF',
+        fontSize: 24,
+        marginBottom: 20,
+        fontWeight: '600',
+    },
+    description: {
+        color: '#808080',
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 32,
+        opacity: 0.7,
+        width: '100%',
+        paddingHorizontal: 20,
+    },
+    codeContainer: {
+        backgroundColor: '#2A2A2A',
+        padding: 20,
+        borderRadius: 16,
+        width: '100%',
+        alignItems: 'center',
+        marginVertical: 16,
+    },
     codeText: {
-        fontSize: 36,
+        color: '#FFFFFF',
+        fontSize: 42,
         fontWeight: '600',
         letterSpacing: 2,
-        marginBottom: 16,
+        marginBottom: 12,
     },
     statusContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        marginTop: 4,
+        gap: 8,
+        opacity: 0.5,
     },
     statusText: {
-        opacity: 0.7,
+        color: '#808080',
+        fontSize: 14,
     },
     urlContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 32,
         gap: 8,
-    },
-    linkIcon: {
-        opacity: 0.7,
+        opacity: 0.5,
     },
     urlText: {
-        opacity: 0.7,
+        color: '#808080',
+        fontSize: 14,
     },
     url: {
+        color: '#FFFFFF',
         marginTop: 4,
+        fontSize: 14,
         fontWeight: '500',
     },
     button: {
         marginTop: 32,
-        minWidth: 140,
+        width: '100%',
+        borderRadius: 12,
+        overflow: 'hidden',
     },
     buttonContent: {
-        paddingVertical: 8,
-        paddingHorizontal: 24,
-    },
-    streamWrapper: {
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        backgroundColor: '#2A2A2A',
     },
     streamContainer: {
         flex: 1,
@@ -357,7 +316,5 @@ const styles = StyleSheet.create({
     },
     stream: {
         flex: 1,
-        width: '100%',
-        height: '100%',
     },
 })

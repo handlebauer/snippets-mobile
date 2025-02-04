@@ -24,11 +24,11 @@ export default function Index() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#121212',
     },
     content: {
         flex: 1,
-        padding: 16,
+        padding: 8,
         alignItems: 'center',
         justifyContent: 'center',
     },
