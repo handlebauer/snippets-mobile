@@ -60,9 +60,6 @@ export function ScreenShareViewer({
                 <View style={styles.container}>
                     <View style={styles.contentContainer}>
                         <View style={styles.card}>
-                            <Text variant="headlineLarge" style={styles.title}>
-                                snippets
-                            </Text>
                             <MaterialCommunityIcons
                                 name="laptop"
                                 size={48}
@@ -76,7 +73,7 @@ export function ScreenShareViewer({
                                 variant="bodyLarge"
                                 style={styles.description}
                             >
-                                Start a new session to get your pairing code
+                                Start a new recording session
                             </Text>
                             <Button
                                 mode="contained"
@@ -119,9 +116,6 @@ export function ScreenShareViewer({
             <View style={styles.container}>
                 <View style={styles.contentContainer}>
                     <View style={styles.card}>
-                        <Text variant="headlineLarge" style={styles.title}>
-                            snippets
-                        </Text>
                         <MaterialCommunityIcons
                             name="laptop"
                             size={48}
