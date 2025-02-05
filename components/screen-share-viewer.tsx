@@ -3,6 +3,7 @@ import {
     Animated,
     Easing,
     Platform,
+    Pressable,
     StatusBar,
     StyleSheet,
     View,
@@ -14,6 +15,8 @@ import { RTCView } from 'react-native-webrtc'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { STATUS_MESSAGES } from '@/constants/webrtc'
+
+import { useRecordButton } from '@/hooks/use-record-button'
 
 import type { ScreenShareState } from '@/types/webrtc'
 
@@ -29,6 +32,25 @@ export function ScreenShareViewer({
     onReset,
 }: ScreenShareViewerProps) {
     const spinValue = React.useRef(new Animated.Value(0)).current
+
+    const handleRecordPress = React.useCallback((isRecording: boolean) => {
+        console.log('Recording state changed:', isRecording)
+        // TODO: Implement recording logic here
+        // For example:
+        // if (isRecording) {
+        //     startRecording()
+        // } else {
+        //     stopRecording()
+        // }
+    }, [])
+
+    const {
+        // isRecording,
+        innerStyle,
+        handleRecordPress: onRecordButtonPress,
+    } = useRecordButton({
+        onRecordPress: handleRecordPress,
+    })
 
     React.useEffect(() => {
         const spinAnimation = Animated.loop(
@@ -47,7 +69,7 @@ export function ScreenShareViewer({
         }
 
         return () => spinAnimation.stop()
-    }, [state.statusMessage])
+    }, [state.statusMessage, spinValue])
 
     const spin = spinValue.interpolate({
         inputRange: [0, 1],
@@ -106,6 +128,16 @@ export function ScreenShareViewer({
                         style={styles.stream}
                         objectFit="cover"
                     />
+                    <View style={styles.recordButtonContainer}>
+                        <View style={styles.recordButton}>
+                            <Animated.View style={innerStyle}>
+                                <Pressable
+                                    onPress={onRecordButtonPress}
+                                    style={StyleSheet.absoluteFill}
+                                />
+                            </Animated.View>
+                        </View>
+                    </View>
                 </View>
             </View>
         )
@@ -310,5 +342,36 @@ const styles = StyleSheet.create({
     },
     stream: {
         flex: 1,
+    },
+    recordButtonContainer: {
+        position: 'absolute',
+        bottom: 48,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    recordButton: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 4,
+        borderColor: '#FFFFFF',
+    },
+    recordButtonActive: {
+        // Remove all styles from here as we want the outer circle to stay consistent
+    },
+    recordButtonInner: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#FF3B30',
+    },
+    recordButtonInnerActive: {
+        width: 40,
+        height: 40,
+        borderRadius: 4,
     },
 })
