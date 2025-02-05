@@ -17,7 +17,7 @@ export interface SupabaseContextType {
     user: User | null
     session: Session | null
     initialized?: boolean
-    signUp: (email: string, password: string) => Promise<void>
+    signUp: (email: string, password: string, username: string) => Promise<void>
     signInWithPassword: (email: string, password: string) => Promise<void>
     signInWithIdToken: (params: {
         provider: Provider
@@ -70,12 +70,30 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
         }
     }, [initialized])
 
-    const signUp = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-        })
-        if (error instanceof Error) throw error
+    const signUp = async (
+        email: string,
+        password: string,
+        username: string,
+    ) => {
+        const { data: authData, error: authError } = await supabase.auth.signUp(
+            {
+                email,
+                password,
+            },
+        )
+        if (authError) throw authError
+
+        if (authData.user) {
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .insert([{ id: authData.user.id, username }])
+
+            if (profileError) {
+                // If profile creation fails, we should delete the auth user
+                await supabase.auth.admin.deleteUser(authData.user.id)
+                throw profileError
+            }
+        }
     }
 
     const signInWithPassword = async (email: string, password: string) => {

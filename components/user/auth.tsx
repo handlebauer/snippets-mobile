@@ -19,8 +19,9 @@ export function Auth() {
         setLoading(true)
         try {
             if (isSignUp) {
-                await signUp(email, password)
-                Alert.alert('Please check your inbox for email verification!')
+                await signUp(email, password, username)
+                Alert.alert('Account created!')
+                setIsSignUp(false)
             } else {
                 await signInWithPassword(email, password)
                 router.replace('/(protected)/(tabs)')
