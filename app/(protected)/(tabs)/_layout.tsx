@@ -37,6 +37,15 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
+                name="videos"
+                options={{
+                    title: 'Videos',
+                    tabBarIcon: ({ color }) => (
+                        <TabBarIcon name="video-camera" color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
                 name="profile"
                 options={{
                     title: 'Profile',
