@@ -32,7 +32,7 @@ export default function TabLayout() {
                 options={{
                     title: 'Capture',
                     tabBarIcon: ({ color }) => (
-                        <TabBarIcon name="desktop" color={color} />
+                        <TabBarIcon name="code" color={color} />
                     ),
                 }}
             />
@@ -41,7 +41,7 @@ export default function TabLayout() {
                 options={{
                     title: 'Videos',
                     tabBarIcon: ({ color }) => (
-                        <TabBarIcon name="video-camera" color={color} />
+                        <TabBarIcon name="list" color={color} />
                     ),
                 }}
             />
