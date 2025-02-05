@@ -211,7 +211,7 @@ export function ScreenShareViewer({
                                         <MaterialCommunityIcons
                                             name="loading"
                                             size={14}
-                                            color="#808080"
+                                            color="#CCCCCC"
                                         />
                                     </Animated.View>
                                     <Text style={styles.statusText}>
@@ -225,7 +225,7 @@ export function ScreenShareViewer({
                             <MaterialCommunityIcons
                                 name="link"
                                 size={20}
-                                color="#808080"
+                                color="#CCCCCC"
                             />
                             <Text style={styles.urlText}>
                                 Enter this code at:
@@ -239,7 +239,6 @@ export function ScreenShareViewer({
                                 onPress={onReset}
                                 style={styles.button}
                                 contentStyle={styles.buttonContent}
-                                textColor="#FFFFFF"
                             >
                                 New Session
                             </Button>
@@ -299,7 +298,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     description: {
-        color: '#808080',
+        color: '#CCCCCC',
         fontSize: 16,
         textAlign: 'center',
         marginBottom: 32,
@@ -329,7 +328,7 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     statusText: {
-        color: '#808080',
+        color: '#CCCCCC',
         fontSize: 14,
     },
     urlContainer: {
@@ -340,7 +339,7 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     urlText: {
-        color: '#808080',
+        color: '#CCCCCC',
         fontSize: 14,
     },
     url: {
