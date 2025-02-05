@@ -1,26 +1,30 @@
 import React, { useState } from 'react'
-import { Alert, Platform, StyleSheet, View } from 'react-native'
+import { Alert, StyleSheet, View } from 'react-native'
 import { Button, Text, TextInput, useTheme } from 'react-native-paper'
 
-import * as AppleAuthentication from 'expo-apple-authentication'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
 
 import { useSupabase } from '@/contexts/supabase.context'
 
 export function Auth() {
-    const { signInWithPassword, signUp, signInWithIdToken, signInWithGithub } =
-        useSupabase()
+    const { signInWithPassword, signUp } = useSupabase()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [username, setUsername] = useState('')
     const [loading, setLoading] = useState(false)
+    const [isSignUp, setIsSignUp] = useState(false)
     const theme = useTheme()
 
-    async function handleSignIn() {
+    async function handleSubmit() {
         setLoading(true)
         try {
-            await signInWithPassword(email, password)
-            router.replace('/(protected)/(tabs)')
+            if (isSignUp) {
+                await signUp(email, password)
+                Alert.alert('Please check your inbox for email verification!')
+            } else {
+                await signInWithPassword(email, password)
+                router.replace('/(protected)/(tabs)')
+            }
         } catch (error) {
             if (error instanceof Error) Alert.alert(error.message)
         } finally {
@@ -28,63 +32,51 @@ export function Auth() {
         }
     }
 
-    async function handleSignUp() {
-        setLoading(true)
-        try {
-            await signUp(email, password)
-            Alert.alert('Please check your inbox for email verification!')
-        } catch (error) {
-            if (error instanceof Error) Alert.alert(error.message)
-        } finally {
-            setLoading(false)
-        }
-    }
+    // async function handleAppleSignIn() {
+    //     try {
+    //         const credential = await AppleAuthentication.signInAsync({
+    //             requestedScopes: [
+    //                 AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+    //                 AppleAuthentication.AppleAuthenticationScope.EMAIL,
+    //             ],
+    //         })
 
-    async function handleAppleSignIn() {
-        try {
-            const credential = await AppleAuthentication.signInAsync({
-                requestedScopes: [
-                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                ],
-            })
+    //         if (credential.identityToken) {
+    //             try {
+    //                 await signInWithIdToken({
+    //                     provider: 'apple',
+    //                     token: credential.identityToken,
+    //                 })
+    //                 router.replace('/(protected)/(tabs)')
+    //             } catch (error) {
+    //                 if (error instanceof Error) {
+    //                     Alert.alert('Error', error.message)
+    //                 }
+    //             }
+    //         }
+    //     } catch (error) {
+    //         // @ts-expect-error
+    //         if (error.code === 'ERR_REQUEST_CANCELED') {
+    //             return
+    //         }
+    //         if (error instanceof Error) {
+    //             Alert.alert('Error', error.message)
+    //         }
+    //     }
+    // }
 
-            if (credential.identityToken) {
-                try {
-                    await signInWithIdToken({
-                        provider: 'apple',
-                        token: credential.identityToken,
-                    })
-                    router.replace('/(protected)/(tabs)')
-                } catch (error) {
-                    if (error instanceof Error) {
-                        Alert.alert('Error', error.message)
-                    }
-                }
-            }
-        } catch (error) {
-            // @ts-expect-error
-            if (error.code === 'ERR_REQUEST_CANCELED') {
-                return
-            }
-            if (error instanceof Error) {
-                Alert.alert('Error', error.message)
-            }
-        }
-    }
-
-    async function handleGithubSignIn() {
-        try {
-            setLoading(true)
-            await signInWithGithub()
-        } catch (error) {
-            if (error instanceof Error) {
-                Alert.alert('Error', error.message)
-            }
-        } finally {
-            setLoading(false)
-        }
-    }
+    // async function handleGithubSignIn() {
+    //     try {
+    //         setLoading(true)
+    //         await signInWithGithub()
+    //     } catch (error) {
+    //         if (error instanceof Error) {
+    //             Alert.alert('Error', error.message)
+    //         }
+    //     } finally {
+    //         setLoading(false)
+    //     }
+    // }
 
     return (
         <View
@@ -103,10 +95,27 @@ export function Auth() {
             </View>
 
             <View style={styles.formContainer}>
+                {isSignUp && (
+                    <TextInput
+                        mode="outlined"
+                        label="Username"
+                        placeholder="Username"
+                        value={username}
+                        onChangeText={setUsername}
+                        autoCapitalize="none"
+                        left={<TextInput.Icon icon="account" />}
+                        style={styles.input}
+                        theme={{
+                            colors: {
+                                primary: '#3797EF',
+                            },
+                        }}
+                    />
+                )}
                 <TextInput
                     mode="outlined"
                     label="Email"
-                    placeholder="Phone number, username or email"
+                    placeholder="Email"
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
@@ -141,17 +150,30 @@ export function Auth() {
             <View style={styles.buttonContainer}>
                 <Button
                     mode="contained"
-                    onPress={handleSignIn}
-                    disabled={loading || !email || !password}
+                    onPress={handleSubmit}
+                    disabled={
+                        loading ||
+                        !email ||
+                        !password ||
+                        (isSignUp && !username)
+                    }
                     loading={loading}
-                    contentStyle={styles.button}
+                    contentStyle={[
+                        styles.button,
+                        (loading ||
+                            !email ||
+                            !password ||
+                            (isSignUp && !username)) &&
+                            styles.buttonDisabled,
+                    ]}
                     textColor="white"
-                    buttonColor="#111"
+                    buttonColor="#3797EF"
                     style={styles.buttonReset}
                 >
-                    Log in
+                    {isSignUp ? 'Sign up' : 'Log in'}
                 </Button>
 
+                {/* Commenting out OAuth buttons
                 <View style={styles.dividerContainer}>
                     <View style={styles.divider} />
                     <Text style={styles.dividerText}>OR</Text>
@@ -195,34 +217,43 @@ export function Auth() {
                         Continue with GitHub
                     </Button>
                 </View>
+                */}
 
                 <View style={styles.signupContainer}>
                     <Text
                         variant="bodyMedium"
                         style={{ color: theme.colors.onSurfaceVariant }}
                     >
-                        Don't have an account?{' '}
+                        {isSignUp
+                            ? 'Already have an account?'
+                            : "Don't have an account?"}{' '}
                     </Text>
                     <Button
                         mode="text"
                         compact
-                        onPress={handleSignUp}
-                        disabled={loading}
+                        onPress={() => {
+                            setIsSignUp(!isSignUp)
+                            setUsername('')
+                            setEmail('')
+                            setPassword('')
+                        }}
                         textColor="#3797EF"
                     >
-                        Sign up
+                        {isSignUp ? 'Log in' : 'Sign up'}
                     </Button>
                 </View>
 
-                <Button
-                    mode="text"
-                    compact
-                    onPress={() => {}}
-                    style={styles.forgotButton}
-                    textColor="#3797EF"
-                >
-                    Forgot password?
-                </Button>
+                {/* {!isSignUp && (
+                    <Button
+                        mode="text"
+                        compact
+                        onPress={() => {}}
+                        style={styles.forgotButton}
+                        textColor="#3797EF"
+                    >
+                        Forgot password?
+                    </Button>
+                )} */}
             </View>
         </View>
     )
@@ -231,11 +262,13 @@ export function Auth() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
         paddingHorizontal: 32,
+        paddingTop: '15%',
     },
     titleContainer: {
-        marginBottom: 64,
+        flex: 0.3,
+        justifyContent: 'flex-end',
+        paddingBottom: 24,
         alignItems: 'center',
     },
     title: {
@@ -243,17 +276,25 @@ const styles = StyleSheet.create({
         fontSize: 42,
     },
     formContainer: {
-        gap: 12,
+        height: 148,
+        justifyContent: 'flex-end',
+        marginBottom: 8,
+        marginTop: 32,
     },
     input: {
         backgroundColor: 'transparent',
         height: 44,
+        marginBottom: 4,
     },
     buttonContainer: {
-        marginTop: 32,
+        flex: 0.2,
+        paddingTop: 8,
     },
     button: {
         height: 44,
+    },
+    buttonDisabled: {
+        opacity: 0.6,
     },
     buttonReset: {
         borderRadius: 4,
@@ -264,9 +305,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 32,
     },
-    forgotButton: {
-        marginTop: 16,
-    },
+    forgotButton: {},
     appleButton: {
         width: '100%',
         height: 44,
