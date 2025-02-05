@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+    Alert,
     Animated,
     Easing,
     Platform,
@@ -17,6 +18,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { STATUS_MESSAGES } from '@/constants/webrtc'
 
 import { useRecordButton } from '@/hooks/use-record-button'
+import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
 import type { ScreenShareState } from '@/types/webrtc'
 import type { RealtimeChannel } from '@supabase/supabase-js'
@@ -28,26 +30,91 @@ interface ScreenShareViewerProps {
     channel: RealtimeChannel | null
 }
 
+// Development-only mock data
+const DEV_MOCK_STATES = {
+    PAIRED: {
+        sessionCode: 'DEV123',
+        statusMessage: 'Development Mode',
+    },
+    STREAMING: {
+        sessionCode: 'DEV123',
+        streamURL: 'dev://mock-stream',
+    },
+} as const
+
 export function ScreenShareViewer({
     state,
     onStartSession,
     onReset,
     channel,
 }: ScreenShareViewerProps) {
+    const { isLandscape, lockToPortrait, unlockOrientation } =
+        useScreenOrientation()
     const spinValue = React.useRef(new Animated.Value(0)).current
+    const [devMode, setDevMode] = React.useState<
+        keyof typeof DEV_MOCK_STATES | null
+    >(null)
+
+    // Lock to portrait by default, unlock when streaming
+    React.useEffect(() => {
+        if (state.streamURL) {
+            unlockOrientation()
+        } else {
+            lockToPortrait()
+        }
+    }, [state.streamURL, lockToPortrait, unlockOrientation])
+
+    console.log('🔄 isLandscape', isLandscape)
+
+    // Development mode handler
+    const handleDevModeActivation = React.useCallback(() => {
+        if (__DEV__) {
+            Alert.alert(
+                'Development Mode',
+                'Choose a viewer state to preview:',
+                [
+                    {
+                        text: 'Paired (Code Screen)',
+                        onPress: () => setDevMode('PAIRED'),
+                    },
+                    {
+                        text: 'Streaming',
+                        onPress: () => setDevMode('STREAMING'),
+                    },
+                    {
+                        text: 'Normal Mode',
+                        onPress: () => setDevMode(null),
+                        style: 'cancel',
+                    },
+                ],
+                { cancelable: true },
+            )
+        }
+    }, [])
+
+    // Merge real state with dev mode state if active
+    const effectiveState = React.useMemo(() => {
+        if (__DEV__ && devMode) {
+            return {
+                ...state,
+                ...DEV_MOCK_STATES[devMode],
+            }
+        }
+        return state
+    }, [state, devMode])
 
     const handleRecordPress = React.useCallback(
         (isRecording: boolean) => {
             console.log('🎬 Record button pressed:', {
                 isRecording,
-                hasSessionCode: !!state.sessionCode,
+                hasSessionCode: !!effectiveState.sessionCode,
                 hasChannel: !!channel,
                 channelState: channel?.state,
             })
 
-            if (!state.sessionCode || !channel) {
+            if (!effectiveState.sessionCode || !channel) {
                 console.error('❌ Cannot record: missing requirements:', {
-                    hasSessionCode: !!state.sessionCode,
+                    hasSessionCode: !!effectiveState.sessionCode,
                     hasChannel: !!channel,
                 })
                 return
@@ -56,7 +123,7 @@ export function ScreenShareViewer({
             // Send recording control signal through the existing channel
             console.log('📤 Sending recording control signal:', {
                 action: isRecording ? 'start' : 'stop',
-                sessionCode: state.sessionCode,
+                sessionCode: effectiveState.sessionCode,
             })
 
             channel
@@ -78,7 +145,7 @@ export function ScreenShareViewer({
                     )
                 })
         },
-        [state.sessionCode, channel],
+        [effectiveState.sessionCode, channel],
     )
 
     const {
@@ -99,21 +166,21 @@ export function ScreenShareViewer({
             }),
         )
 
-        if (state.statusMessage) {
+        if (effectiveState.statusMessage) {
             spinAnimation.start()
         } else {
             spinAnimation.stop()
         }
 
         return () => spinAnimation.stop()
-    }, [state.statusMessage, spinValue])
+    }, [effectiveState.statusMessage, spinValue])
 
     const spin = spinValue.interpolate({
         inputRange: [0, 1],
         outputRange: ['0deg', '360deg'],
     })
 
-    if (!state.sessionCode) {
+    if (!effectiveState.sessionCode) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <View style={styles.container}>
@@ -137,6 +204,8 @@ export function ScreenShareViewer({
                             <Button
                                 mode="contained"
                                 onPress={onStartSession}
+                                onLongPress={handleDevModeActivation}
+                                delayLongPress={800}
                                 style={styles.button}
                                 contentStyle={styles.buttonContent}
                                 buttonColor="#2A2A2A"
@@ -151,21 +220,41 @@ export function ScreenShareViewer({
         )
     }
 
-    if (state.streamURL) {
+    if (effectiveState.streamURL) {
         return (
             <View style={styles.fullScreen}>
                 <StatusBar
                     translucent={true}
                     backgroundColor="transparent"
                     barStyle="light-content"
+                    hidden={isLandscape}
                 />
-                <View style={styles.streamContainer}>
-                    <RTCView
-                        streamURL={state.streamURL}
-                        style={styles.stream}
-                        objectFit="cover"
-                    />
-                    <View style={styles.recordButtonContainer}>
+                <View
+                    style={[
+                        styles.streamContainer,
+                        isLandscape && styles.streamContainerLandscape,
+                    ]}
+                >
+                    {__DEV__ && devMode === 'STREAMING' ? (
+                        <View style={styles.devModeStreamPlaceholder}>
+                            <Text style={styles.devModeText}>
+                                Development Mode{'\n'}Mock Stream View
+                            </Text>
+                        </View>
+                    ) : (
+                        <RTCView
+                            streamURL={effectiveState.streamURL}
+                            style={styles.stream}
+                            objectFit="cover"
+                        />
+                    )}
+                    <View
+                        style={[
+                            styles.recordButtonContainer,
+                            isLandscape &&
+                                styles.recordButtonContainerLandscape,
+                        ]}
+                    >
                         <View style={styles.recordButton}>
                             <Animated.View style={innerStyle}>
                                 <Pressable
@@ -199,9 +288,9 @@ export function ScreenShareViewer({
                                 variant="headlineLarge"
                                 style={styles.codeText}
                             >
-                                {state.sessionCode}
+                                {effectiveState.sessionCode}
                             </Text>
-                            {state.statusMessage && (
+                            {effectiveState.statusMessage && (
                                 <View style={styles.statusContainer}>
                                     <Animated.View
                                         style={{
@@ -215,7 +304,7 @@ export function ScreenShareViewer({
                                         />
                                     </Animated.View>
                                     <Text style={styles.statusText}>
-                                        {state.statusMessage}
+                                        {effectiveState.statusMessage}
                                     </Text>
                                 </View>
                             )}
@@ -233,7 +322,8 @@ export function ScreenShareViewer({
                         </View>
                         <Text style={styles.url}>https://snippet.is</Text>
 
-                        {state.statusMessage === STATUS_MESSAGES.ENDED && (
+                        {effectiveState.statusMessage ===
+                            STATUS_MESSAGES.ENDED && (
                             <Button
                                 mode="outlined"
                                 onPress={onReset}
@@ -364,14 +454,24 @@ const styles = StyleSheet.create({
         backgroundColor: '#000',
         marginTop: Platform.OS === 'ios' ? -60 : 0,
     },
+    streamContainerLandscape: {
+        marginTop: 0,
+    },
     stream: {
         flex: 1,
     },
     recordButtonContainer: {
         position: 'absolute',
-        bottom: 48,
+        bottom: 24,
         width: '100%',
         alignItems: 'center',
+        justifyContent: 'center',
+    },
+    recordButtonContainerLandscape: {
+        bottom: 'auto',
+        left: 24,
+        width: 'auto',
+        height: '100%',
         justifyContent: 'center',
     },
     recordButton: {
@@ -397,5 +497,18 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 4,
+    },
+    devModeStreamPlaceholder: {
+        flex: 1,
+        backgroundColor: '#2A2A2A',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    devModeText: {
+        color: '#FFFFFF',
+        fontSize: 24,
+        textAlign: 'center',
+        opacity: 0.7,
     },
 })

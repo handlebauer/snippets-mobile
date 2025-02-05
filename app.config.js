@@ -3,7 +3,6 @@ export default {
         name: 'snippets',
         slug: 'snippets',
         version: '0.0.1',
-        orientation: 'portrait',
         icon: './assets/images/icon.png',
         newArchEnabled: true,
         scheme: 'snippets',
@@ -20,6 +19,7 @@ export default {
             infoPlist: {
                 ITSAppUsesNonExemptEncryption: false,
             },
+            requireFullScreen: true,
         },
         android: {
             adaptiveIcon: {
@@ -36,6 +36,12 @@ export default {
             'expo-router',
             'expo-apple-authentication',
             '@config-plugins/react-native-webrtc',
+            [
+                'expo-screen-orientation',
+                {
+                    initialOrientation: 'DEFAULT',
+                },
+            ],
         ],
         bundleIdentifier: 'change-when-ready',
         experiments: {
