@@ -208,5 +208,6 @@ export function useWebRTC() {
         state,
         startSession,
         resetState,
+        channel,
     }
 }

@@ -6,7 +6,7 @@ import { ScreenShareViewer } from '@/components/screen-share-viewer'
 import { useWebRTC } from '@/hooks/use-webrtc'
 
 export default function Index() {
-    const { state, startSession, resetState } = useWebRTC()
+    const { state, startSession, resetState, channel } = useWebRTC()
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -15,6 +15,7 @@ export default function Index() {
                     state={state}
                     onStartSession={startSession}
                     onReset={resetState}
+                    channel={channel?.current}
                 />
             </View>
         </SafeAreaView>

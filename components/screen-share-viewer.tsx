@@ -19,30 +19,67 @@ import { STATUS_MESSAGES } from '@/constants/webrtc'
 import { useRecordButton } from '@/hooks/use-record-button'
 
 import type { ScreenShareState } from '@/types/webrtc'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 interface ScreenShareViewerProps {
     state: ScreenShareState
     onStartSession: () => void
     onReset: () => void
+    channel: RealtimeChannel | null
 }
 
 export function ScreenShareViewer({
     state,
     onStartSession,
     onReset,
+    channel,
 }: ScreenShareViewerProps) {
     const spinValue = React.useRef(new Animated.Value(0)).current
 
-    const handleRecordPress = React.useCallback((isRecording: boolean) => {
-        console.log('Recording state changed:', isRecording)
-        // TODO: Implement recording logic here
-        // For example:
-        // if (isRecording) {
-        //     startRecording()
-        // } else {
-        //     stopRecording()
-        // }
-    }, [])
+    const handleRecordPress = React.useCallback(
+        (isRecording: boolean) => {
+            console.log('🎬 Record button pressed:', {
+                isRecording,
+                hasSessionCode: !!state.sessionCode,
+                hasChannel: !!channel,
+                channelState: channel?.state,
+            })
+
+            if (!state.sessionCode || !channel) {
+                console.error('❌ Cannot record: missing requirements:', {
+                    hasSessionCode: !!state.sessionCode,
+                    hasChannel: !!channel,
+                })
+                return
+            }
+
+            // Send recording control signal through the existing channel
+            console.log('📤 Sending recording control signal:', {
+                action: isRecording ? 'start' : 'stop',
+                sessionCode: state.sessionCode,
+            })
+
+            channel
+                .send({
+                    type: 'broadcast',
+                    event: 'recording',
+                    payload: {
+                        type: 'recording',
+                        action: isRecording ? 'start' : 'stop',
+                    },
+                })
+                .then(() => {
+                    console.log('✅ Recording control signal sent successfully')
+                })
+                .catch(error => {
+                    console.error(
+                        '❌ Failed to send recording control signal:',
+                        error,
+                    )
+                })
+        },
+        [state.sessionCode, channel],
+    )
 
     const {
         // isRecording,

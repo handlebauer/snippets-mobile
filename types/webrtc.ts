@@ -7,8 +7,14 @@ export interface WebRTCSignal {
     }
 }
 
+export interface RecordingSignal {
+    type: 'recording'
+    action: 'start' | 'stop'
+}
+
 export interface ScreenShareState {
     sessionCode: string | null
     streamURL: string | null
     statusMessage: string | null
+    isRecording?: boolean
 }
