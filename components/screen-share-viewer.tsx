@@ -262,38 +262,26 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
-        backgroundColor: '#121212',
         width: '100%',
     },
     container: {
         flex: 1,
-        justifyContent: 'center',
         width: '100%',
-        padding: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     contentContainer: {
         width: '100%',
-        alignItems: 'stretch',
+        alignItems: 'center',
         justifyContent: 'center',
+        paddingHorizontal: 16,
     },
     card: {
-        marginHorizontal: 8,
-        backgroundColor: '#1E1E1E',
-        padding: 20,
-        borderRadius: 20,
-        alignItems: 'center',
         width: '100%',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 12,
-            },
-            android: {
-                elevation: 8,
-            },
-        }),
+        alignItems: 'center',
+        backgroundColor: '#1A1A1A',
+        borderRadius: 12,
+        padding: 24,
     },
     icon: {
         marginVertical: 20,
