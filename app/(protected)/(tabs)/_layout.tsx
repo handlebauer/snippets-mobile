@@ -30,9 +30,9 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: 'Record',
+                    title: 'Capture',
                     tabBarIcon: ({ color }) => (
-                        <TabBarIcon name="dot-circle-o" color={color} />
+                        <TabBarIcon name="desktop" color={color} />
                     ),
                 }}
             />
