@@ -129,6 +129,12 @@ export function useWebRTC() {
         [],
     )
 
+    const startSession = useCallback(() => {
+        const code = Math.floor(100000 + Math.random() * 900000).toString()
+        console.log('🎯 Generated session code:', code)
+        setState(prev => ({ ...prev, sessionCode: code }))
+    }, [])
+
     // Combined useEffect to ensure channel is set up before creating RTCPeerConnection
     useEffect(() => {
         if (!state.sessionCode) return
@@ -154,8 +160,22 @@ export function useWebRTC() {
             if (status === 'SUBSCRIBED') {
                 console.log('👋 Connected to signaling channel')
                 try {
+                    const {
+                        data: { user },
+                    } = await supabase.auth.getUser()
+                    if (!user) {
+                        console.error('❌ No authenticated user found')
+                        return
+                    }
+
                     await newChannel.track({
                         online_at: new Date().toISOString(),
+                        client_type: 'mobile',
+                        user_id: user.id,
+                    })
+                    console.log('✅ Presence tracked:', {
+                        userId: user.id,
+                        clientType: 'mobile',
                     })
                 } catch (error) {
                     console.error('❌ Error tracking presence:', error)
@@ -197,12 +217,6 @@ export function useWebRTC() {
             supabase.removeChannel(newChannel)
         }
     }, [state.sessionCode, handleWebRTCSignal, handleStreamSetup])
-
-    const startSession = useCallback(() => {
-        const code = Math.floor(100000 + Math.random() * 900000).toString()
-        console.log('🎯 Generated session code:', code)
-        setState(prev => ({ ...prev, sessionCode: code }))
-    }, [])
 
     return {
         state,

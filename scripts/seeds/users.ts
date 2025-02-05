@@ -2,8 +2,8 @@ import { cleanDatabase, supabase } from './base'
 
 async function seedUsers() {
     const testUser = {
-        email: 'test@test.com',
-        password: 'test',
+        email: 'asdf@asdf.com',
+        password: 'asdf',
     }
 
     try {
