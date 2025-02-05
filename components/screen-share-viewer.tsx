@@ -16,6 +16,7 @@ import { RTCView } from 'react-native-webrtc'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { STATUS_MESSAGES } from '@/constants/webrtc'
+import { useStream } from '@/contexts/recording.context'
 
 import { useRecordButton } from '@/hooks/use-record-button'
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
@@ -48,6 +49,7 @@ export function ScreenShareViewer({
     onReset,
     channel,
 }: ScreenShareViewerProps) {
+    const { setIsStreaming } = useStream()
     const { isLandscape, lockToPortrait, unlockOrientation } =
         useScreenOrientation()
     const spinValue = React.useRef(new Animated.Value(0)).current
@@ -63,6 +65,11 @@ export function ScreenShareViewer({
             lockToPortrait()
         }
     }, [state.streamURL, lockToPortrait, unlockOrientation])
+
+    // Update streaming state when stream URL changes
+    React.useEffect(() => {
+        setIsStreaming(!!state.streamURL)
+    }, [state.streamURL, setIsStreaming])
 
     console.log('🔄 isLandscape', isLandscape)
 
