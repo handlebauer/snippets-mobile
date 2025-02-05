@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import {
-    ActionSheetIOS,
-    Alert,
-    Platform,
+    Keyboard,
     Pressable,
     ScrollView,
     StyleSheet,
+    TextInput,
     View,
 } from 'react-native'
-import { ActivityIndicator, Divider, Text, useTheme } from 'react-native-paper'
+import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { router } from 'expo-router'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { StatusBar } from 'expo-status-bar'
 
 import { Session } from '@supabase/supabase-js'
 
@@ -21,94 +20,113 @@ import { supabase } from '@/lib/supabase.client'
 interface ProfileData {
     username: string
     website: string
+    github_url: string
 }
 
 interface ProfileFieldProps {
-    icon: string
     label: string
     value: string
-    onPress?: () => void
-    editable?: boolean
-    isLast?: boolean
+    onEdit?: (value: string) => void
+    isEditing?: boolean
+    onStartEdit?: () => void
+    placeholder?: string
+    readOnly?: boolean
 }
 
 const ProfileField: React.FC<ProfileFieldProps> = ({
-    icon,
     label,
     value,
-    onPress,
-    editable = false,
-    isLast = false,
+    onEdit,
+    isEditing,
+    onStartEdit,
+    placeholder,
+    readOnly,
 }) => {
-    const theme = useTheme()
-
-    return (
+    const content = (
         <>
-            <Pressable
-                onPress={editable ? onPress : undefined}
-                style={({ pressed }) => [
-                    styles.fieldContainer,
-                    {
-                        backgroundColor: theme.colors.surface,
-                    },
-                    pressed &&
-                        editable && {
-                            backgroundColor: theme.colors.surfaceVariant,
-                        },
+            <Text
+                style={[
+                    styles.fieldLabel,
+                    readOnly && styles.fieldLabelReadOnly,
                 ]}
             >
-                <MaterialCommunityIcons
-                    name={icon as any}
-                    size={22}
-                    color={theme.colors.primary}
-                    style={styles.fieldIcon}
+                {label}
+            </Text>
+            {isEditing ? (
+                <TextInput
+                    value={value}
+                    onChangeText={onEdit}
+                    style={styles.fieldInput}
+                    autoFocus
                 />
-                <View style={styles.fieldTextContainer}>
-                    <Text
-                        variant="bodyMedium"
-                        style={[
-                            styles.fieldLabel,
-                            { color: theme.colors.onSurface },
-                        ]}
-                    >
-                        {label}
-                    </Text>
-                    <Text
-                        variant="bodyMedium"
-                        style={[
-                            styles.fieldValue,
-                            {
-                                color: editable
-                                    ? theme.colors.primary
-                                    : theme.colors.onSurfaceVariant,
-                            },
-                        ]}
-                    >
-                        {value}
-                    </Text>
-                </View>
-                {editable && (
-                    <MaterialCommunityIcons
-                        name="chevron-right"
-                        size={20}
-                        color={theme.colors.onSurfaceVariant}
-                        style={styles.chevron}
-                    />
-                )}
-            </Pressable>
-            {!isLast && <Divider style={{ marginLeft: 56 }} />}
+            ) : (
+                <Text
+                    style={[
+                        styles.fieldValue,
+                        readOnly && styles.fieldValueReadOnly,
+                        !value && styles.fieldValuePlaceholder,
+                    ]}
+                >
+                    {value || placeholder}
+                </Text>
+            )}
         </>
     )
+
+    if (readOnly) {
+        return (
+            <View
+                style={[styles.fieldContainer, styles.fieldContainerReadOnly]}
+            >
+                {content}
+            </View>
+        )
+    }
+
+    return (
+        <Pressable onPress={onStartEdit} style={styles.fieldContainer}>
+            {content}
+        </Pressable>
+    )
 }
+
+const NavigationBar = ({
+    title,
+    onCancel,
+    onSave,
+    hasChanges,
+}: {
+    title: string
+    onCancel: () => void
+    onSave: () => void
+    hasChanges: boolean
+}) => (
+    <View style={styles.navBar}>
+        <Pressable onPress={onCancel}>
+            <Text style={styles.navCancel}>Cancel</Text>
+        </Pressable>
+        <Text style={styles.navTitle}>{title}</Text>
+        <Pressable onPress={onSave} disabled={!hasChanges}>
+            <Text
+                style={[styles.navDone, !hasChanges && styles.navDoneDisabled]}
+            >
+                Done
+            </Text>
+        </Pressable>
+    </View>
+)
 
 export default function ProfileScreen() {
     const [session, setSession] = useState<Session | null>(null)
     const [profileData, setProfileData] = useState<ProfileData>({
         username: '',
         website: '',
+        github_url: '',
     })
-    const [loading, setLoading] = useState(false)
-    const theme = useTheme()
+    const [editingField, setEditingField] = useState<keyof ProfileData | null>(
+        null,
+    )
+    const [tempValue, setTempValue] = useState('')
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -121,10 +139,9 @@ export default function ProfileScreen() {
 
     const fetchProfile = async (userId: string) => {
         try {
-            setLoading(true)
             const { data, error } = await supabase
                 .from('profiles')
-                .select('username, website')
+                .select('username, website, github_url')
                 .eq('id', userId)
                 .single()
 
@@ -132,191 +149,135 @@ export default function ProfileScreen() {
             if (data) setProfileData(data)
         } catch (error) {
             console.error('Error fetching profile:', error)
-        } finally {
-            setLoading(false)
         }
     }
 
-    const handleUpdateProfile = async () => {
-        if (!session?.user.id) return
+    const handleStartEdit = (field: keyof ProfileData) => {
+        setEditingField(field)
+        setTempValue(profileData[field])
+    }
+
+    const handleSave = async () => {
+        if (!session?.user.id || !editingField) return
 
         try {
-            setLoading(true)
-            const { error } = await supabase.from('profiles').upsert({
-                id: session.user.id,
-                ...profileData,
-                updated_at: new Date().toISOString(),
-            })
+            const updates = {
+                [editingField]: tempValue,
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', session.user.id)
 
             if (error) throw error
+
+            setProfileData(prev => ({
+                ...prev,
+                [editingField]: tempValue,
+            }))
         } catch (error) {
             console.error('Error updating profile:', error)
         } finally {
-            setLoading(false)
+            handleCancel()
         }
+    }
+
+    const handleCancel = () => {
+        setEditingField(null)
+        setTempValue('')
+        Keyboard.dismiss()
     }
 
     const handleSignOut = async () => {
         try {
-            setLoading(true)
             await supabase.auth.signOut()
             router.replace('/(auth)')
         } catch (error) {
             console.error('Error signing out:', error)
-        } finally {
-            setLoading(false)
         }
-    }
-
-    const handleFieldEdit = (field: 'username' | 'website') => {
-        if (Platform.OS === 'ios') {
-            ActionSheetIOS.showActionSheetWithOptions(
-                {
-                    title: `Edit ${field[0].toUpperCase() + field.slice(1)}`,
-                    message: `Current ${field}: ${profileData[field] || 'Not set'}`,
-                    options: ['Edit', 'Cancel'],
-                    cancelButtonIndex: 1,
-                },
-                buttonIndex => {
-                    if (buttonIndex === 0) {
-                        Alert.prompt(
-                            `Enter ${field}`,
-                            `Update your ${field}`,
-                            [
-                                {
-                                    text: 'Cancel',
-                                    style: 'cancel',
-                                },
-                                {
-                                    text: 'Save',
-                                    onPress: (value?: string) => {
-                                        if (value) {
-                                            setProfileData(prev => ({
-                                                ...prev,
-                                                [field]: value,
-                                            }))
-                                        }
-                                    },
-                                },
-                            ],
-                            'plain-text',
-                            profileData[field],
-                        )
-                    }
-                },
-            )
-        }
-        // Add Android implementation here if needed
     }
 
     if (!session) return null
 
+    const hasChanges = editingField
+        ? tempValue !== profileData[editingField]
+        : false
+
     return (
-        <SafeAreaView
-            style={[
-                styles.safeArea,
-                { backgroundColor: theme.colors.background },
-            ]}
-            edges={['top']}
-        >
-            <ScrollView
-                style={styles.container}
-                contentContainerStyle={styles.contentContainer}
-            >
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <StatusBar style="light" />
+            {editingField ? (
+                <NavigationBar
+                    title="Edit profile"
+                    onCancel={handleCancel}
+                    onSave={handleSave}
+                    hasChanges={hasChanges}
+                />
+            ) : (
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Edit profile</Text>
+                </View>
+            )}
+            <ScrollView style={styles.container}>
                 <View style={styles.section}>
-                    <Text
-                        variant="labelSmall"
-                        style={[
-                            styles.sectionHeader,
-                            { color: theme.colors.primary },
-                        ]}
-                    >
-                        Account Information
-                    </Text>
-                    <View
-                        style={[
-                            styles.card,
-                            {
-                                backgroundColor: theme.colors.surface,
-                                borderColor: theme.colors.outline,
-                            },
-                        ]}
-                    >
-                        <ProfileField
-                            icon="email"
-                            label="Email"
-                            value={session.user.email || 'No email'}
-                            editable={false}
-                        />
-                        <ProfileField
-                            icon="account"
-                            label="Username"
-                            value={profileData.username || 'Set username'}
-                            onPress={() => handleFieldEdit('username')}
-                            editable
-                        />
-                        <ProfileField
-                            icon="web"
-                            label="Website"
-                            value={profileData.website || 'Add website'}
-                            onPress={() => handleFieldEdit('website')}
-                            editable
-                            isLast
-                        />
-                    </View>
+                    <ProfileField
+                        label="Email"
+                        value={session.user.email || 'No email'}
+                        readOnly
+                    />
                 </View>
 
-                <View style={styles.section}>
-                    <View style={styles.buttonContainer}>
-                        <Pressable
-                            onPress={handleUpdateProfile}
-                            disabled={loading}
-                            style={({ pressed }) => [
-                                styles.button,
-                                {
-                                    backgroundColor: theme.colors.primary,
-                                    opacity: pressed || loading ? 0.8 : 1,
-                                },
-                            ]}
-                        >
-                            {loading ? (
-                                <ActivityIndicator
-                                    color={theme.colors.onPrimary}
-                                />
-                            ) : (
-                                <Text
-                                    style={[
-                                        styles.buttonText,
-                                        { color: theme.colors.onPrimary },
-                                    ]}
-                                >
-                                    Save Changes
-                                </Text>
-                            )}
-                        </Pressable>
-
-                        <Pressable
-                            onPress={handleSignOut}
-                            disabled={loading}
-                            style={({ pressed }) => [
-                                styles.button,
-                                styles.destructiveButton,
-                                {
-                                    opacity: pressed || loading ? 0.8 : 1,
-                                },
-                            ]}
-                        >
-                            <Text
-                                style={[
-                                    styles.buttonText,
-                                    { color: theme.colors.outline },
-                                ]}
-                            >
-                                Sign Out
-                            </Text>
-                        </Pressable>
-                    </View>
+                <View style={[styles.section, styles.sectionWithGap]}>
+                    <ProfileField
+                        label="Name"
+                        value={
+                            editingField === 'username'
+                                ? tempValue
+                                : profileData.username
+                        }
+                        onEdit={setTempValue}
+                        isEditing={editingField === 'username'}
+                        onStartEdit={() => handleStartEdit('username')}
+                        placeholder="Enter your name"
+                    />
+                    <View style={styles.divider} />
+                    <ProfileField
+                        label="Website"
+                        value={
+                            editingField === 'website'
+                                ? tempValue
+                                : profileData.website
+                        }
+                        onEdit={setTempValue}
+                        isEditing={editingField === 'website'}
+                        onStartEdit={() => handleStartEdit('website')}
+                        placeholder="https://example.com"
+                    />
+                    <View style={styles.divider} />
+                    <ProfileField
+                        label="GitHub"
+                        value={
+                            editingField === 'github_url'
+                                ? tempValue
+                                : profileData.github_url
+                        }
+                        onEdit={setTempValue}
+                        isEditing={editingField === 'github_url'}
+                        onStartEdit={() => handleStartEdit('github_url')}
+                        placeholder="https://github.com/username"
+                    />
                 </View>
+
+                <Pressable
+                    onPress={handleSignOut}
+                    style={({ pressed }) => [
+                        styles.signOutButton,
+                        pressed && styles.signOutButtonPressed,
+                    ]}
+                >
+                    <Text style={styles.signOutText}>Sign Out</Text>
+                </Pressable>
             </ScrollView>
         </SafeAreaView>
     )
@@ -325,67 +286,106 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
+        backgroundColor: '#121212',
+    },
+    header: {
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#333333',
+    },
+    headerTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    navBar: {
+        height: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#333333',
+    },
+    navCancel: {
+        fontSize: 17,
+        color: '#FFFFFF',
+    },
+    navTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    navDone: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#0A84FF',
+    },
+    navDoneDisabled: {
+        opacity: 0.5,
     },
     container: {
         flex: 1,
-    },
-    contentContainer: {
-        paddingTop: 16,
+        backgroundColor: '#121212',
     },
     section: {
-        paddingHorizontal: 16,
-        paddingTop: 24,
+        backgroundColor: '#1C1C1E',
+        marginTop: 35,
     },
-    sectionHeader: {
-        marginBottom: 8,
-        marginLeft: 16,
-        textTransform: 'uppercase',
-        fontWeight: '600',
-    },
-    card: {
-        borderRadius: 10,
-        borderWidth: 1,
-        overflow: 'hidden',
+    sectionWithGap: {
+        marginTop: 20,
     },
     fieldContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
+        paddingVertical: 8,
         paddingHorizontal: 16,
     },
-    fieldIcon: {
-        marginRight: 12,
-        width: 28,
-    },
-    fieldTextContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+    fieldContainerReadOnly: {
+        opacity: 0.8,
     },
     fieldLabel: {
-        fontWeight: '400',
+        fontSize: 14,
+        color: '#8E8E93',
+        marginBottom: 4,
+    },
+    fieldLabelReadOnly: {
+        color: '#666666',
     },
     fieldValue: {
-        marginLeft: 8,
+        fontSize: 17,
+        color: '#FFFFFF',
     },
-    chevron: {
-        marginLeft: 8,
+    fieldValueReadOnly: {
+        color: '#CCCCCC',
     },
-    buttonContainer: {
-        gap: 8,
+    fieldValuePlaceholder: {
+        color: '#666666',
+        fontStyle: 'italic',
     },
-    button: {
-        paddingVertical: 14,
-        borderRadius: 10,
+    fieldInput: {
+        fontSize: 17,
+        color: '#FFFFFF',
+        padding: 0,
+        margin: 0,
+    },
+    divider: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: '#333333',
+        marginLeft: 16,
+    },
+    signOutButton: {
+        marginTop: 35,
+        backgroundColor: '#1C1C1E',
+        paddingVertical: 12,
         alignItems: 'center',
-        justifyContent: 'center',
     },
-    destructiveButton: {
-        backgroundColor: 'transparent',
+    signOutButtonPressed: {
+        opacity: 0.7,
     },
-    buttonText: {
-        fontSize: 16,
-        fontWeight: '600',
+    signOutText: {
+        color: '#FF453A',
+        fontSize: 17,
+        fontWeight: '400',
     },
 })

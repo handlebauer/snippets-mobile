@@ -3,6 +3,7 @@ create table if not exists public.profiles (
     username text unique,
     avatar_url text,
     website text,
+    github_url text,
     updated_at timestamp with time zone,
     
     constraint username_length check (char_length(username) >= 3)

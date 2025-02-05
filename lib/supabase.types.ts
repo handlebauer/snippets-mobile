@@ -37,6 +37,7 @@ export type Database = {
             profiles: {
                 Row: {
                     avatar_url: string | null
+                    github_url: string | null
                     id: string
                     updated_at: string | null
                     username: string | null
@@ -44,6 +45,7 @@ export type Database = {
                 }
                 Insert: {
                     avatar_url?: string | null
+                    github_url?: string | null
                     id: string
                     updated_at?: string | null
                     username?: string | null
@@ -51,6 +53,7 @@ export type Database = {
                 }
                 Update: {
                     avatar_url?: string | null
+                    github_url?: string | null
                     id?: string
                     updated_at?: string | null
                     username?: string | null
