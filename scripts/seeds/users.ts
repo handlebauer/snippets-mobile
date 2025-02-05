@@ -22,7 +22,7 @@ async function seedUsers() {
         // Create profile for user
         const { error: profileError } = await supabase.from('profiles').upsert({
             id: user.user.id,
-            username: 'testuser',
+            username: 'test_user',
             updated_at: new Date().toISOString(),
         })
 

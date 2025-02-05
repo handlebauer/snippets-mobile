@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import {
+    Image,
     Keyboard,
     Pressable,
     ScrollView,
@@ -21,6 +22,7 @@ interface ProfileData {
     username: string
     website: string
     github_url: string
+    avatar_url: string
 }
 
 interface ProfileFieldProps {
@@ -90,6 +92,57 @@ const ProfileField: React.FC<ProfileFieldProps> = ({
     )
 }
 
+const AvatarAndNameField: React.FC<{
+    avatarUrl: string | null
+    username: string
+    onStartEdit: () => void
+    isEditing: boolean
+    onEdit: (value: string) => void
+    placeholder: string
+}> = ({ avatarUrl, username, onStartEdit, isEditing, onEdit, placeholder }) => {
+    const initials = username
+        ? username
+              .split(' ')
+              .map(n => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2)
+        : '?'
+
+    return (
+        <Pressable onPress={onStartEdit} style={styles.avatarContainer}>
+            {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            ) : (
+                <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarInitials}>{initials}</Text>
+                </View>
+            )}
+            <View style={styles.nameContainer}>
+                <Text style={styles.fieldLabel}>Name</Text>
+                {isEditing ? (
+                    <TextInput
+                        value={username}
+                        onChangeText={onEdit}
+                        style={styles.fieldInput}
+                        autoFocus
+                        autoCapitalize="none"
+                    />
+                ) : (
+                    <Text
+                        style={[
+                            styles.fieldValue,
+                            !username && styles.fieldValuePlaceholder,
+                        ]}
+                    >
+                        {username || placeholder}
+                    </Text>
+                )}
+            </View>
+        </Pressable>
+    )
+}
+
 const NavigationBar = ({
     title,
     onCancel,
@@ -122,6 +175,7 @@ export default function ProfileScreen() {
         username: '',
         website: '',
         github_url: '',
+        avatar_url: '',
     })
     const [editingField, setEditingField] = useState<keyof ProfileData | null>(
         null,
@@ -141,7 +195,7 @@ export default function ProfileScreen() {
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('username, website, github_url')
+                .select('username, website, github_url, avatar_url')
                 .eq('id', userId)
                 .single()
 
@@ -229,16 +283,16 @@ export default function ProfileScreen() {
                 </View>
 
                 <View style={[styles.section, styles.sectionWithGap]}>
-                    <ProfileField
-                        label="Name"
-                        value={
+                    <AvatarAndNameField
+                        avatarUrl={profileData.avatar_url}
+                        username={
                             editingField === 'username'
                                 ? tempValue
                                 : profileData.username
                         }
-                        onEdit={setTempValue}
-                        isEditing={editingField === 'username'}
                         onStartEdit={() => handleStartEdit('username')}
+                        isEditing={editingField === 'username'}
+                        onEdit={setTempValue}
                         placeholder="Enter your name"
                     />
                     <View style={styles.divider} />
@@ -387,5 +441,35 @@ const styles = StyleSheet.create({
         color: '#FF453A',
         fontSize: 17,
         fontWeight: '400',
+    },
+    avatarContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+    },
+    avatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#2C2C2E',
+    },
+    avatarPlaceholder: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#2C2C2E',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarInitials: {
+        color: '#FFFFFF',
+        fontSize: 24,
+        fontWeight: '500',
+    },
+    nameContainer: {
+        flex: 1,
+        marginLeft: 16,
+        justifyContent: 'center',
     },
 })
