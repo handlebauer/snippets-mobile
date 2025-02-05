@@ -387,6 +387,9 @@ const styles = StyleSheet.create({
     section: {
         backgroundColor: '#1C1C1E',
         marginTop: 35,
+        marginHorizontal: 16,
+        borderRadius: 12,
+        overflow: 'hidden',
     },
     sectionWithGap: {
         marginTop: 20,
@@ -430,9 +433,11 @@ const styles = StyleSheet.create({
     },
     signOutButton: {
         marginTop: 35,
+        marginHorizontal: 16,
         backgroundColor: '#1C1C1E',
         paddingVertical: 12,
         alignItems: 'center',
+        borderRadius: 12,
     },
     signOutButtonPressed: {
         opacity: 0.7,
