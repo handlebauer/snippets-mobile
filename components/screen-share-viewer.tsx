@@ -15,6 +15,7 @@ import { RTCView } from 'react-native-webrtc'
 
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import { RecordingTimer } from '@/components/recording-timer'
 import { STATUS_MESSAGES } from '@/constants/webrtc'
 import { useStream } from '@/contexts/recording.context'
 
@@ -49,7 +50,7 @@ export function ScreenShareViewer({
     onReset,
     channel,
 }: ScreenShareViewerProps) {
-    const { setIsStreaming } = useStream()
+    const { setIsStreaming, setRecordingStartTime } = useStream()
     const { isLandscape, lockToPortrait, unlockOrientation } =
         useScreenOrientation()
     const spinValue = React.useRef(new Animated.Value(0)).current
@@ -127,6 +128,9 @@ export function ScreenShareViewer({
                 return
             }
 
+            // Update recording start time
+            setRecordingStartTime(isRecording ? Date.now() : null)
+
             // Send recording control signal through the existing channel
             console.log('📤 Sending recording control signal:', {
                 action: isRecording ? 'start' : 'stop',
@@ -152,7 +156,7 @@ export function ScreenShareViewer({
                     )
                 })
         },
-        [effectiveState.sessionCode, channel],
+        [effectiveState.sessionCode, channel, setRecordingStartTime],
     )
 
     const {
@@ -236,6 +240,7 @@ export function ScreenShareViewer({
                     barStyle="light-content"
                     hidden={isLandscape}
                 />
+                <RecordingTimer />
                 <View
                     style={[
                         styles.streamContainer,
