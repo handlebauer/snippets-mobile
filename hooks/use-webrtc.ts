@@ -14,7 +14,11 @@ import {
 
 import { supabase } from '@/lib/supabase.client'
 
-import type { ScreenShareState, WebRTCSignal } from '@/types/webrtc'
+import type {
+    ScreenShareState,
+    VideoProcessingSignal,
+    WebRTCSignal,
+} from '@/types/webrtc'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 export function useWebRTC() {
@@ -25,20 +29,29 @@ export function useWebRTC() {
     })
     const peerConnection = useRef<RTCPeerConnection | null>(null)
     const channel = useRef<RealtimeChannel | null>(null)
+    const videoChannel = useRef<RealtimeChannel | null>(null)
 
     const resetState = useCallback(() => {
+        console.log('🔄 Resetting WebRTC state')
         setState({
             sessionCode: null,
             streamURL: null,
             statusMessage: null,
         })
         if (peerConnection.current) {
+            console.log('👋 Closing peer connection')
             peerConnection.current.close()
             peerConnection.current = null
         }
         if (channel.current) {
+            console.log('👋 Removing WebRTC channel')
             supabase.removeChannel(channel.current)
             channel.current = null
+        }
+        if (videoChannel.current) {
+            console.log('👋 Removing video processing channel')
+            supabase.removeChannel(videoChannel.current)
+            videoChannel.current = null
         }
     }, [])
 
@@ -139,13 +152,79 @@ export function useWebRTC() {
     useEffect(() => {
         if (!state.sessionCode) return
 
-        console.log('🔄 Setting up signaling for session:', state.sessionCode)
+        console.log('🔄 Setting up signaling for session:', {
+            sessionCode: state.sessionCode,
+            hasExistingPeerConnection: !!peerConnection.current,
+            hasExistingChannel: !!channel.current,
+            hasExistingVideoChannel: !!videoChannel.current,
+        })
         setState(prev => ({ ...prev, statusMessage: STATUS_MESSAGES.WAITING }))
 
         // Create and subscribe to the signaling channel first
         const newChannel = supabase.channel(`webrtc:${state.sessionCode}`, {
             config: CHANNEL_CONFIG,
         })
+
+        // Create and subscribe to the video processing channel
+        console.log('📡 Setting up video processing channel:', {
+            channelName: `video:${state.sessionCode}`,
+            sessionCode: state.sessionCode,
+        })
+        const newVideoChannel = supabase.channel(`video:${state.sessionCode}`, {
+            config: CHANNEL_CONFIG,
+        })
+
+        newVideoChannel.on(
+            'broadcast',
+            { event: 'video_processing' },
+            ({ payload }) => {
+                console.log('📼 Received video processing update:', {
+                    payload,
+                    currentState: state,
+                    channelState: newVideoChannel.state,
+                    channelName: `video:${state.sessionCode}`,
+                })
+                const videoSignal = payload as VideoProcessingSignal
+                setState(prev => {
+                    const newState = {
+                        ...prev,
+                        videoProcessing: {
+                            status: videoSignal.status,
+                            videoId: videoSignal.videoId,
+                            error: videoSignal.error,
+                        },
+                    }
+                    console.log('🔄 Updating state with video processing:', {
+                        prevState: prev,
+                        newState,
+                        channelState: newVideoChannel.state,
+                    })
+                    return newState
+                })
+            },
+        )
+
+        newVideoChannel.subscribe(status => {
+            console.log('📡 Video processing channel status:', {
+                status,
+                channelName: `video:${state.sessionCode}`,
+                presenceState: newVideoChannel.presenceState(),
+            })
+            if (status === 'SUBSCRIBED') {
+                console.log('👋 Connected to video processing channel:', {
+                    channelName: `video:${state.sessionCode}`,
+                    state: newVideoChannel.state,
+                })
+            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                console.error('❌ Video processing channel error:', {
+                    status,
+                    channelName: `video:${state.sessionCode}`,
+                    state: newVideoChannel.state,
+                })
+            }
+        })
+
+        videoChannel.current = newVideoChannel
 
         newChannel.on('broadcast', { event: 'webrtc' }, async ({ payload }) => {
             if (!peerConnection.current) return
@@ -215,6 +294,7 @@ export function useWebRTC() {
         return () => {
             pc.close()
             supabase.removeChannel(newChannel)
+            supabase.removeChannel(newVideoChannel)
         }
     }, [state.sessionCode, handleWebRTCSignal, handleStreamSetup])
 

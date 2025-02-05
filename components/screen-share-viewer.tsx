@@ -15,6 +15,7 @@ import { RTCView } from 'react-native-webrtc'
 
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import { PostRecordingView } from '@/components/post-recording-view'
 import { RecordingTimer } from '@/components/recording-timer'
 import { STATUS_MESSAGES } from '@/constants/webrtc'
 import { useStream } from '@/contexts/recording.context'
@@ -190,6 +191,42 @@ export function ScreenShareViewer({
         inputRange: [0, 1],
         outputRange: ['0deg', '360deg'],
     })
+
+    // Log video processing state changes
+    React.useEffect(() => {
+        if (state.videoProcessing) {
+            console.log(
+                '🎬 Video processing state changed in ScreenShareViewer:',
+                {
+                    status: state.videoProcessing.status,
+                    videoId: state.videoProcessing.videoId,
+                    error: state.videoProcessing.error,
+                    hasStreamURL: !!state.streamURL,
+                    hasSessionCode: !!state.sessionCode,
+                },
+            )
+        }
+    }, [state.videoProcessing])
+
+    // If video is being processed, show the post-recording view
+    if (state.videoProcessing) {
+        console.log('🔄 Transitioning to PostRecordingView:', {
+            status: state.videoProcessing.status,
+            videoId: state.videoProcessing.videoId,
+        })
+        return (
+            <PostRecordingView
+                videoProcessing={{
+                    type: 'video_processing',
+                    ...state.videoProcessing,
+                }}
+                onClose={() => {
+                    console.log('🔄 PostRecordingView close requested')
+                    onReset()
+                }}
+            />
+        )
+    }
 
     if (!effectiveState.sessionCode) {
         return (
