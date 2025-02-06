@@ -3,6 +3,7 @@ create table if not exists public.videos (
     profile_id uuid references public.profiles(id) on delete cascade not null,
     name text not null,
     storage_path text not null,
+    thumbnail_url text,
     duration integer, -- in seconds
     size bigint, -- in bytes
     mime_type text,

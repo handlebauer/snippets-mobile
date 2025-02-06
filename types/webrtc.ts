@@ -27,6 +27,8 @@ export interface VideoMetadata {
     storage_path: string
     mime_type: string
     created_at: string
+    thumbnail_url?: string
+    views?: number
 }
 
 export interface ScreenShareState {

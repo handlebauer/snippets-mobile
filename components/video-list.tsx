@@ -1,16 +1,84 @@
 import React from 'react'
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import {
+    Dimensions,
+    FlatList,
+    Image,
+    Pressable,
+    RefreshControl,
+    StyleSheet,
+    View,
+} from 'react-native'
 import { IconButton, Text } from 'react-native-paper'
+import Animated, { FadeIn, Layout } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import type { VideoMetadata } from '@/types/webrtc'
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const COLUMN_COUNT = 3
+const GRID_SPACING = 1
+const ITEM_WIDTH =
+    (SCREEN_WIDTH - (COLUMN_COUNT - 1) * GRID_SPACING) / COLUMN_COUNT
 
 interface VideoListProps {
     videos: VideoMetadata[]
     onRefresh: () => void
     onEditVideo: (videoId: string) => void
+}
+
+interface VideoGridItemProps {
+    video: VideoMetadata
+    onPress: () => void
+}
+
+function VideoGridItem({ video, onPress }: VideoGridItemProps) {
+    const formatDuration = (seconds: number | null) => {
+        if (!seconds) return ''
+        const minutes = Math.floor(seconds / 60)
+        const remainingSeconds = seconds % 60
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+    }
+
+    return (
+        <Animated.View
+            entering={FadeIn}
+            layout={Layout}
+            style={styles.gridItem}
+        >
+            <Pressable onPress={onPress} style={styles.gridItemPressable}>
+                <Image
+                    source={{
+                        uri: video.thumbnail_url || 'placeholder_image_url',
+                    }}
+                    style={styles.thumbnail}
+                    resizeMode="cover"
+                />
+                <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.8)']}
+                    style={styles.gradientOverlay}
+                >
+                    <View style={styles.videoInfo}>
+                        <Text style={styles.duration}>
+                            {formatDuration(video.duration)}
+                        </Text>
+                        <View style={styles.statsContainer}>
+                            <MaterialCommunityIcons
+                                name="play"
+                                size={12}
+                                color="#FFFFFF"
+                            />
+                            <Text style={styles.statsText}>
+                                {video.views || 0}
+                            </Text>
+                        </View>
+                    </View>
+                </LinearGradient>
+            </Pressable>
+        </Animated.View>
+    )
 }
 
 export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
@@ -22,32 +90,35 @@ export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
         setRefreshing(false)
     }, [onRefresh])
 
-    const formatDuration = (seconds: number | null) => {
-        if (!seconds) return 'Unknown duration'
-        const minutes = Math.floor(seconds / 60)
-        const remainingSeconds = seconds % 60
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-    }
-
-    const formatSize = (bytes: number | null) => {
-        if (!bytes) return 'Unknown size'
-        const sizes = ['Bytes', 'KB', 'MB', 'GB']
-        const i = Math.floor(Math.log(bytes) / Math.log(1024))
-        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`
-    }
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString()
-    }
+    const renderItem = React.useCallback(
+        ({ item: video }: { item: VideoMetadata }) => (
+            <VideoGridItem
+                video={video}
+                onPress={() => onEditVideo(video.id)}
+            />
+        ),
+        [onEditVideo],
+    )
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['top']}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>My Videos</Text>
+                <IconButton
+                    icon="plus"
+                    size={24}
+                    iconColor="#FFFFFF"
+                    onPress={() => {}}
+                    style={styles.addButton}
+                />
             </View>
-            <ScrollView
-                style={styles.container}
-                contentContainerStyle={styles.scrollContent}
+            <FlatList
+                data={videos}
+                renderItem={renderItem}
+                keyExtractor={item => item.id}
+                numColumns={COLUMN_COUNT}
+                contentContainerStyle={styles.gridContainer}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -55,47 +126,20 @@ export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
                         tintColor="#FFFFFF"
                     />
                 }
-            >
-                {videos.length === 0 ? (
-                    <Text style={styles.message}>No videos found</Text>
-                ) : (
-                    videos.map(video => (
-                        <View key={video.id} style={styles.videoItemContainer}>
-                            <View style={styles.videoItem}>
-                                <View style={styles.videoItemContent}>
-                                    <View style={styles.videoTitleRow}>
-                                        <MaterialCommunityIcons
-                                            name="video"
-                                            size={24}
-                                            color="#CCCCCC"
-                                            style={styles.videoIcon}
-                                        />
-                                        <Text style={styles.videoName}>
-                                            {video.name}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.videoDetails}>
-                                        <Text style={styles.videoInfo}>
-                                            {formatDuration(video.duration)} •{' '}
-                                            {formatSize(video.size)}
-                                        </Text>
-                                        <Text style={styles.videoDate}>
-                                            {formatDate(video.created_at)}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </View>
-                            <IconButton
-                                icon="pencil"
-                                size={20}
-                                iconColor="#0A84FF"
-                                onPress={() => onEditVideo(video.id)}
-                                style={styles.editButton}
-                            />
-                        </View>
-                    ))
-                )}
-            </ScrollView>
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <MaterialCommunityIcons
+                            name="video-off"
+                            size={48}
+                            color="#666666"
+                        />
+                        <Text style={styles.emptyText}>No videos yet</Text>
+                        <Text style={styles.emptySubtext}>
+                            Your recorded videos will appear here
+                        </Text>
+                    </View>
+                }
+            />
         </SafeAreaView>
     )
 }
@@ -103,75 +147,86 @@ export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#121212',
+        backgroundColor: '#000000',
     },
     header: {
         height: 44,
-        justifyContent: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: 16,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#333333',
     },
     headerTitle: {
-        fontSize: 17,
-        fontWeight: '600',
+        fontSize: 20,
+        fontWeight: '700',
         color: '#FFFFFF',
     },
-    container: {
+    addButton: {
+        margin: 0,
+    },
+    gridContainer: {
+        minHeight: '100%',
+    },
+    gridItem: {
+        width: ITEM_WIDTH,
+        height: ITEM_WIDTH * 1.5,
+        marginRight: GRID_SPACING,
+        marginBottom: GRID_SPACING,
+    },
+    gridItemPressable: {
         flex: 1,
     },
-    scrollContent: {
-        padding: 16,
-    },
-    message: {
-        color: '#FFFFFF',
-        textAlign: 'center',
-        marginTop: 24,
-        opacity: 0.5,
-    },
-    videoItemContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    videoItem: {
-        flex: 1,
+    thumbnail: {
+        width: '100%',
+        height: '100%',
         backgroundColor: '#1C1C1E',
-        borderRadius: 12,
-        overflow: 'hidden',
     },
-    videoItemContent: {
-        padding: 12,
+    gradientOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 48,
+        justifyContent: 'flex-end',
+        padding: 8,
     },
-    videoTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    videoIcon: {
-        marginRight: 8,
-    },
-    videoName: {
-        flex: 1,
-        fontSize: 17,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    videoDetails: {
+    videoInfo: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    videoInfo: {
-        fontSize: 13,
-        color: '#CCCCCC',
+    duration: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '600',
     },
-    videoDate: {
-        fontSize: 13,
-        color: '#CCCCCC',
-        opacity: 0.7,
+    statsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
     },
-    editButton: {
-        marginLeft: 8,
+    statsText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+        marginTop: '50%',
+    },
+    emptyText: {
+        color: '#FFFFFF',
+        fontSize: 17,
+        fontWeight: '600',
+        marginTop: 16,
+    },
+    emptySubtext: {
+        color: '#666666',
+        fontSize: 15,
+        textAlign: 'center',
+        marginTop: 8,
     },
 })

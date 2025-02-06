@@ -71,6 +71,7 @@ export type Database = {
                     profile_id: string
                     size: number | null
                     storage_path: string
+                    thumbnail_url: string | null
                     updated_at: string | null
                 }
                 Insert: {
@@ -82,6 +83,7 @@ export type Database = {
                     profile_id: string
                     size?: number | null
                     storage_path: string
+                    thumbnail_url?: string | null
                     updated_at?: string | null
                 }
                 Update: {
@@ -93,6 +95,7 @@ export type Database = {
                     profile_id?: string
                     size?: number | null
                     storage_path?: string
+                    thumbnail_url?: string | null
                     updated_at?: string | null
                 }
                 Relationships: [
