@@ -41,7 +41,8 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
     const [, setCurrentTime] = React.useState(0)
     const currentTimeRef = React.useRef(0)
     const [duration, setDuration] = React.useState(0)
-    const [, setTrimEnd] = React.useState(0)
+    const [trimStart, setTrimStart] = React.useState(0)
+    const [trimEnd, setTrimEnd] = React.useState(0)
     const [thumbnailsLoading, setThumbnailsLoading] = React.useState(false)
     const [thumbnails, setThumbnails] = React.useState<string[]>([])
     const [timelineWidth] = React.useState(0)
@@ -296,7 +297,7 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
             const videoDuration = status.durationMillis / 1000
             console.log('⏱️ Video duration:', videoDuration)
             setDuration(videoDuration)
-            setTrimEnd(videoDuration)
+            setTrimEnd(videoDuration) // Initialize trimEnd to full duration
 
             // Set initial playhead position
             if (timelineWidth > 0) {
@@ -310,13 +311,47 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
         }
     }
 
-    // Handle seeking
+    // Handle trim points update
+    const handleTrimChange = React.useCallback(
+        (start: number, end: number) => {
+            // Ensure values are within valid bounds
+            const validStart = Math.max(0, Math.min(start, duration - 1))
+            const validEnd = Math.min(duration, Math.max(end, validStart + 1))
+
+            // Only update if values have actually changed
+            if (validStart !== trimStart || validEnd !== trimEnd) {
+                console.log('Parent updating trim points:', {
+                    start: validStart,
+                    end: validEnd,
+                    duration,
+                })
+                setTrimStart(validStart)
+                setTrimEnd(validEnd)
+
+                // If video is playing, ensure we're within trim bounds
+                if (isPlayingRef.current && currentTimeRef.current) {
+                    const constrainedTime = Math.max(
+                        validStart,
+                        Math.min(currentTimeRef.current, validEnd),
+                    )
+                    if (constrainedTime !== currentTimeRef.current) {
+                        updateVideoPosition(constrainedTime)
+                    }
+                }
+            }
+        },
+        [duration, trimStart, trimEnd, updateVideoPosition],
+    )
+
+    // Handle seeking with trim boundaries
     const handleSeek = React.useCallback(
         (time: number) => {
-            updateCurrentTime(time)
-            updateVideoPosition(time)
+            // Constrain seek position to trim boundaries
+            const constrainedTime = Math.max(trimStart, Math.min(time, trimEnd))
+            updateCurrentTime(constrainedTime)
+            updateVideoPosition(constrainedTime)
         },
-        [updateCurrentTime, updateVideoPosition],
+        [trimStart, trimEnd, updateCurrentTime, updateVideoPosition],
     )
 
     if (loading || !video || !videoUrl) {
@@ -351,7 +386,26 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                         <Text style={styles.navButton}>Cancel</Text>
                     </Pressable>
                     <Text style={styles.navTitle}>Video</Text>
-                    <Pressable onPress={onClose}>
+                    <Pressable
+                        onPress={() => {
+                            // Log trim values and metadata
+                            const trimData = {
+                                videoId,
+                                trimStart,
+                                trimEnd,
+                                duration,
+                                trimmedDuration: trimEnd - trimStart,
+                            }
+                            console.log('Video trim complete:', trimData)
+
+                            // TODO: In the future, we'll want to:
+                            // 1. Save the trim points to the database
+                            // 2. Generate a new trimmed video
+                            // 3. Update the video metadata
+                            // For now, just close
+                            onClose()
+                        }}
+                    >
                         <Text style={styles.navButton}>Done</Text>
                     </Pressable>
                 </View>
@@ -382,6 +436,9 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                         thumbnailsLoading={thumbnailsLoading}
                         onSeek={handleSeek}
                         onPlayPause={togglePlayback}
+                        trimStart={trimStart}
+                        trimEnd={trimEnd}
+                        onTrimChange={handleTrimChange}
                     />
 
                     {/* Bottom Toolbar */}
