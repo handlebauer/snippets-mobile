@@ -37,8 +37,14 @@ interface VideoGridItemProps {
 function VideoGridItem({ video, onPress }: VideoGridItemProps) {
     const formatDuration = (seconds: number | null) => {
         if (!seconds) return ''
-        const minutes = Math.floor(seconds / 60)
-        const remainingSeconds = seconds % 60
+
+        const hours = Math.floor(seconds / 3600)
+        const minutes = Math.floor((seconds % 3600) / 60)
+        const remainingSeconds = Math.floor(seconds % 60)
+
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+        }
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
     }
 
@@ -64,16 +70,6 @@ function VideoGridItem({ video, onPress }: VideoGridItemProps) {
                         <Text style={styles.duration}>
                             {formatDuration(video.duration)}
                         </Text>
-                        <View style={styles.statsContainer}>
-                            <MaterialCommunityIcons
-                                name="play"
-                                size={12}
-                                color="#FFFFFF"
-                            />
-                            <Text style={styles.statsText}>
-                                {video.views || 0}
-                            </Text>
-                        </View>
                     </View>
                 </LinearGradient>
             </Pressable>
@@ -192,23 +188,17 @@ const styles = StyleSheet.create({
     },
     videoInfo: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
     },
     duration: {
         color: '#FFFFFF',
         fontSize: 12,
         fontWeight: '600',
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    statsText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: '500',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        borderRadius: 2,
     },
     emptyContainer: {
         flex: 1,

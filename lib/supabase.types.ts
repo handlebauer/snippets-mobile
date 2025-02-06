@@ -72,6 +72,8 @@ export type Database = {
                     size: number | null
                     storage_path: string
                     thumbnail_url: string | null
+                    trim_end: number | null
+                    trim_start: number | null
                     updated_at: string | null
                 }
                 Insert: {
@@ -84,6 +86,8 @@ export type Database = {
                     size?: number | null
                     storage_path: string
                     thumbnail_url?: string | null
+                    trim_end?: number | null
+                    trim_start?: number | null
                     updated_at?: string | null
                 }
                 Update: {
@@ -96,6 +100,8 @@ export type Database = {
                     size?: number | null
                     storage_path?: string
                     thumbnail_url?: string | null
+                    trim_end?: number | null
+                    trim_start?: number | null
                     updated_at?: string | null
                 }
                 Relationships: [

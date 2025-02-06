@@ -4,7 +4,9 @@ create table if not exists public.videos (
     name text not null,
     storage_path text not null,
     thumbnail_url text,
-    duration integer, -- in seconds
+    duration numeric, -- in seconds (changed from integer for precision)
+    trim_start numeric default 0, -- in seconds
+    trim_end numeric, -- in seconds
     size bigint, -- in bytes
     mime_type text,
     created_at timestamp with time zone default now(),

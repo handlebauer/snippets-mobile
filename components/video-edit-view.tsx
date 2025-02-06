@@ -1,17 +1,22 @@
+import { Buffer } from 'buffer'
 import React from 'react'
 import { Animated, Pressable, StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { AVPlaybackStatus, ResizeMode, Video } from 'expo-av'
+import { ResizeMode, Video } from 'expo-av'
+import * as FileSystem from 'expo-file-system'
 import * as VideoThumbnails from 'expo-video-thumbnails'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+
+import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native'
 
 import { supabase } from '@/lib/supabase.client'
 
 import { VideoScrubber } from './video-scrubber'
 
 import type { VideoMetadata } from '@/types/webrtc'
+import type { AVPlaybackStatus } from 'expo-av'
 
 interface VideoEditViewProps {
     videoId: string
@@ -150,13 +155,28 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
 
     // Handle video status update with proper scrubbing check
     const handleVideoStatus = (status: AVPlaybackStatus) => {
-        if (!status.isLoaded) return
+        if (!status.isLoaded) {
+            console.warn('❌ Video status update failed:', status)
+            return
+        }
+
+        console.log('🎥 Video status update:', {
+            isPlaying: status.isPlaying,
+            positionMillis: status.positionMillis,
+            durationMillis: status.durationMillis,
+            shouldPlay: status.shouldPlay,
+            isBuffering: status.isBuffering,
+        })
 
         // Update playing state from video status
         const wasPlaying = isPlayingRef.current
         const isVideoPlaying = status.isPlaying || false
 
         if (wasPlaying !== isVideoPlaying) {
+            console.log('🔄 Playing state changed:', {
+                wasPlaying,
+                isVideoPlaying,
+            })
             updatePlayingState(isVideoPlaying)
             if (isVideoPlaying) {
                 startPlayheadAnimation()
@@ -170,6 +190,11 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
             const videoTime = status.positionMillis / 1000
             // Only update if the difference is significant
             if (Math.abs(videoTime - currentTimeRef.current) > 0.1) {
+                console.log('⏰ Updating time:', {
+                    videoTime,
+                    currentTime: currentTimeRef.current,
+                    timelineWidth: timelineWidth,
+                })
                 updateCurrentTime(videoTime)
                 if (timelineLayout.current.width > 0) {
                     const position =
@@ -184,6 +209,7 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
     React.useEffect(() => {
         async function fetchVideo() {
             try {
+                console.log('🔍 Fetching video details for:', videoId)
                 const { data, error } = await supabase
                     .from('videos')
                     .select('*')
@@ -191,8 +217,38 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                     .single()
 
                 if (error) throw error
+                console.log('📝 Video data:', data)
+
+                // Check if the video file exists in storage
+                const { data: fileData, error: fileError } =
+                    await supabase.storage.from('videos').list(videoId)
+
+                if (fileError) {
+                    console.error('❌ Error checking video file:', fileError)
+                    throw fileError
+                }
+
+                console.log('📁 Storage files:', fileData)
+
+                // Try to find trimmed version first, fall back to most recent video file
+                const videoFile =
+                    fileData.find(f => f.name === 'trimmed.mp4') ||
+                    fileData.find(
+                        f =>
+                            f.name.endsWith('.mp4') && f.name !== 'trimmed.mp4',
+                    )
+
+                if (!videoFile) {
+                    throw new Error('No video file found in storage')
+                }
+
+                console.log('📊 Video file details:', {
+                    name: videoFile.name,
+                    size: videoFile.metadata?.size || 0,
+                    mimeType: videoFile.metadata?.mimetype,
+                })
+
                 setVideo(data)
-                setTrimEnd(data.duration)
 
                 // Get signed URL for video
                 const { data: signedUrlData, error: signedUrlError } =
@@ -202,9 +258,24 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
 
                 if (signedUrlError) throw signedUrlError
                 if (signedUrlData?.signedUrl) {
+                    console.log('🔗 Got signed URL:', {
+                        url: signedUrlData.signedUrl,
+                        storagePath: data.storage_path,
+                    })
                     setVideoUrl(signedUrlData.signedUrl)
                 }
+
+                // We'll set the actual duration when the video loads
+                console.log('⚡ Initial duration setup:', {
+                    duration: data.duration,
+                    trimStart: 0,
+                    trimEnd: data.duration,
+                })
+                setDuration(data.duration)
+                setTrimStart(0)
+                setTrimEnd(data.duration)
             } catch (err) {
+                console.error('❌ Error fetching video:', err)
                 setError(
                     err instanceof Error ? err.message : 'Failed to load video',
                 )
@@ -289,14 +360,22 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
             console.warn('❌ Video load failed:', status)
             return
         }
-        console.log('📼 Video loaded:', status)
+        console.log('📼 Video loaded:', {
+            status,
+            hasVideo: videoRef.current !== null,
+            currentDuration: duration,
+        })
 
         // Ensure video is paused initially
         videoRef.current?.pauseAsync()
 
         if (status.durationMillis) {
             const videoDuration = status.durationMillis / 1000
-            console.log('⏱️ Video duration:', videoDuration)
+            console.log('⏱️ Setting video duration:', {
+                videoDuration,
+                previousDuration: duration,
+                hasTimelineWidth: timelineWidth > 0,
+            })
             setDuration(videoDuration)
             setTrimEnd(videoDuration) // Initialize trimEnd to full duration
 
@@ -305,6 +384,11 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                 const initialPosition =
                     (status.positionMillis / 1000 / videoDuration) *
                     timelineWidth
+                console.log('🎯 Setting initial playhead:', {
+                    initialPosition,
+                    timelineWidth,
+                    positionMillis: status.positionMillis,
+                })
                 playheadAnim.setValue(initialPosition)
             }
         } else {
@@ -379,11 +463,20 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
         [trimStart, trimEnd, updateCurrentTime, updateVideoPosition],
     )
 
+    // Add error boundary for video loading
+    const handleError = (error: string) => {
+        console.error('🚨 Video loading error:', error)
+    }
+
     if (loading || !video || !videoUrl) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <View style={styles.container}>
-                    <Text style={styles.loadingText}>Loading video...</Text>
+                    <Text style={styles.loadingText}>
+                        {loading && video
+                            ? 'Trimming video...'
+                            : 'Loading video...'}
+                    </Text>
                 </View>
             </SafeAreaView>
         )
@@ -412,23 +505,167 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                     </Pressable>
                     <Text style={styles.navTitle}>Video</Text>
                     <Pressable
-                        onPress={() => {
-                            // Log trim values and metadata
-                            const trimData = {
-                                videoId,
-                                trimStart,
-                                trimEnd,
-                                duration,
-                                trimmedDuration: trimEnd - trimStart,
-                            }
-                            console.log('Video trim complete:', trimData)
+                        onPress={async () => {
+                            try {
+                                // Create a temporary directory for the trimmed video
+                                const tempDir = `${FileSystem.cacheDirectory}video-trim-${videoId}/`
+                                await FileSystem.makeDirectoryAsync(tempDir, {
+                                    intermediates: true,
+                                })
 
-                            // TODO: In the future, we'll want to:
-                            // 1. Save the trim points to the database
-                            // 2. Generate a new trimmed video
-                            // 3. Update the video metadata
-                            // For now, just close
-                            onClose()
+                                // Generate output path for trimmed video
+                                const outputPath = `${tempDir}trimmed.mp4`
+
+                                // Show loading state
+                                setLoading(true)
+
+                                // Construct FFmpeg command for trimming
+                                // -ss: start time in seconds
+                                // -t: duration in seconds
+                                // -c copy: copy streams without re-encoding (fast)
+                                const command = `-ss ${trimStart} -t ${trimEnd - trimStart} -i ${videoUrl} -c copy ${outputPath}`
+
+                                console.log('Starting video trim:', {
+                                    command,
+                                    trimStart,
+                                    trimEnd,
+                                    duration: trimEnd - trimStart,
+                                })
+
+                                // Execute FFmpeg command
+                                const session = await FFmpegKit.execute(command)
+                                const returnCode = await session.getReturnCode()
+
+                                if (ReturnCode.isSuccess(returnCode)) {
+                                    console.log('Video trimmed successfully')
+
+                                    // Verify the output file exists and has content
+                                    const fileInfo =
+                                        await FileSystem.getInfoAsync(
+                                            outputPath,
+                                        )
+                                    if (!fileInfo.exists) {
+                                        throw new Error(
+                                            'Trimmed video file not created',
+                                        )
+                                    }
+
+                                    // Read the file as binary data
+                                    const binaryFile =
+                                        await FileSystem.readAsStringAsync(
+                                            outputPath,
+                                            {
+                                                encoding:
+                                                    FileSystem.EncodingType
+                                                        .Base64,
+                                            },
+                                        )
+
+                                    // Convert base64 to Uint8Array for upload
+                                    const binaryData = Buffer.from(
+                                        binaryFile,
+                                        'base64',
+                                    )
+
+                                    console.log('📊 File info:', {
+                                        exists: fileInfo.exists,
+                                        uri: fileInfo.uri,
+                                        binaryLength: binaryData.length,
+                                        base64Length: binaryFile.length,
+                                    })
+
+                                    if (
+                                        !binaryData ||
+                                        binaryData.length === 0
+                                    ) {
+                                        throw new Error(
+                                            'Failed to read trimmed video file',
+                                        )
+                                    }
+
+                                    const newStoragePath = `${videoId}/trimmed.mp4`
+
+                                    // Upload the binary data
+                                    const { error: uploadError } =
+                                        await supabase.storage
+                                            .from('videos')
+                                            .upload(
+                                                newStoragePath,
+                                                binaryData,
+                                                {
+                                                    contentType: 'video/mp4',
+                                                    upsert: true,
+                                                },
+                                            )
+
+                                    if (uploadError) {
+                                        console.error(
+                                            'Upload error:',
+                                            uploadError,
+                                        )
+                                        throw uploadError
+                                    }
+
+                                    // Verify the upload by checking the file exists
+                                    const { data: files, error: listError } =
+                                        await supabase.storage
+                                            .from('videos')
+                                            .list(videoId)
+
+                                    if (listError) {
+                                        throw listError
+                                    }
+
+                                    const uploadedFile = files.find(
+                                        f => f.name === 'trimmed.mp4',
+                                    )
+                                    if (!uploadedFile) {
+                                        throw new Error(
+                                            'Failed to verify uploaded file',
+                                        )
+                                    }
+
+                                    console.log('✅ Upload verified:', {
+                                        name: uploadedFile.name,
+                                        size: uploadedFile.metadata?.size || 0,
+                                    })
+
+                                    // Update video metadata in database
+                                    const { error: updateError } =
+                                        await supabase
+                                            .from('videos')
+                                            .update({
+                                                storage_path: newStoragePath,
+                                                duration: trimEnd - trimStart,
+                                                trim_start: trimStart,
+                                                trim_end: trimEnd,
+                                                updated_at:
+                                                    new Date().toISOString(),
+                                            })
+                                            .eq('id', videoId)
+
+                                    if (updateError) throw updateError
+
+                                    // Clean up temporary files
+                                    await FileSystem.deleteAsync(tempDir, {
+                                        idempotent: true,
+                                    })
+
+                                    console.log('Video update complete')
+                                } else {
+                                    throw new Error('Failed to trim video')
+                                }
+                            } catch (err) {
+                                console.error('Error trimming video:', err)
+                                setError(
+                                    err instanceof Error
+                                        ? err.message
+                                        : 'Failed to trim video',
+                                )
+                            } finally {
+                                setLoading(false)
+                                onClose()
+                            }
                         }}
                     >
                         <Text style={styles.navButton}>Done</Text>
@@ -446,8 +683,11 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                             resizeMode={ResizeMode.CONTAIN}
                             onLoad={handleVideoLoad}
                             onPlaybackStatusUpdate={handleVideoStatus}
+                            onError={handleError}
                             useNativeControls={false}
                             shouldPlay={false}
+                            isLooping={false}
+                            volume={1.0}
                         />
                     </View>
 
@@ -534,11 +774,13 @@ const styles = StyleSheet.create({
     videoContainer: {
         flex: 1,
         justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: '#121212',
+        overflow: 'hidden',
     },
     video: {
-        width: '100%',
-        height: '100%',
+        flex: 1,
+        aspectRatio: 16 / 9,
         backgroundColor: '#121212',
     },
     toolbarContainer: {
