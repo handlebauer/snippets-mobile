@@ -36,6 +36,7 @@ export default {
             'expo-router',
             'expo-apple-authentication',
             '@config-plugins/react-native-webrtc',
+            'expo-video',
             [
                 'expo-screen-orientation',
                 {
@@ -51,6 +52,8 @@ export default {
         extra: {
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+            openshotAccessKey: process.env.OPENSHOT_ACCESS_KEY,
+            openshotBaseUrl: process.env.OPENSHOT_BASE_URL,
             eas: {
                 projectId: 'abd6e45d-9048-467e-a2c9-597877588671',
             },

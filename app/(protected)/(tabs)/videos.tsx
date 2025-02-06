@@ -1,90 +1,26 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import React, { useRef, useState } from 'react'
+import { Pressable, StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { AVPlaybackStatus, ResizeMode, Video } from 'expo-av'
+import { useRouter } from 'expo-router'
 
-import { supabase } from '@/lib/supabase.client'
+import { VideoList } from '@/components/video-list'
 
-interface VideoItem {
-    id: string
-    name: string
-    storage_path: string
-    duration: number | null
-    size: number | null
-    created_at: string
-}
+import { useVideos } from '@/hooks/use-videos'
 
 export default function VideosScreen() {
-    const [videos, setVideos] = useState<VideoItem[]>([])
-    const [loading, setLoading] = useState(true)
+    const router = useRouter()
+    const { videos, loading, error, refetch } = useVideos()
     const [selectedVideo, setSelectedVideo] = useState<{
         url: string
         name: string
     } | null>(null)
     const videoRef = useRef<Video>(null)
 
-    useEffect(() => {
-        fetchVideos()
-    }, [])
-
-    const fetchVideos = async () => {
-        try {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser()
-            if (!user) return
-
-            const { data, error } = await supabase
-                .from('videos')
-                .select('*')
-                .eq('profile_id', user.id)
-                .order('created_at', { ascending: false })
-
-            if (error) throw error
-            setVideos(data || [])
-        } catch (error) {
-            console.error('Error fetching videos:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleVideoPress = async (video: VideoItem) => {
-        try {
-            const { data } = await supabase.storage
-                .from('videos')
-                .createSignedUrl(video.storage_path, 3600)
-
-            if (data?.signedUrl) {
-                setSelectedVideo({ url: data.signedUrl, name: video.name })
-            }
-        } catch (error) {
-            console.error('Error getting video URL:', error)
-        }
-    }
-
-    const handleCloseVideo = () => {
-        setSelectedVideo(null)
-    }
-
-    const formatDuration = (seconds: number | null) => {
-        if (!seconds) return 'Unknown duration'
-        const minutes = Math.floor(seconds / 60)
-        const remainingSeconds = seconds % 60
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-    }
-
-    const formatSize = (bytes: number | null) => {
-        if (!bytes) return 'Unknown size'
-        const sizes = ['Bytes', 'KB', 'MB', 'GB']
-        const i = Math.floor(Math.log(bytes) / Math.log(1024))
-        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`
-    }
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString()
+    const handleEditVideo = (videoId: string) => {
+        router.push(`/video-editor/${videoId}`)
     }
 
     const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
@@ -95,12 +31,40 @@ export default function VideosScreen() {
         }
     }
 
+    if (loading) {
+        return (
+            <View
+                style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+            >
+                <Text>Loading videos...</Text>
+            </View>
+        )
+    }
+
+    if (error) {
+        return (
+            <View
+                style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+            >
+                <Text>Error: {error}</Text>
+            </View>
+        )
+    }
+
     if (selectedVideo) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
                     <Pressable
-                        onPress={handleCloseVideo}
+                        onPress={() => setSelectedVideo(null)}
                         style={styles.closeButton}
                     >
                         <Text style={styles.closeButtonText}>Done</Text>
@@ -125,40 +89,11 @@ export default function VideosScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Videos</Text>
-            </View>
-            <ScrollView style={styles.container}>
-                {loading ? (
-                    <Text style={styles.message}>Loading videos...</Text>
-                ) : videos.length === 0 ? (
-                    <Text style={styles.message}>No videos found</Text>
-                ) : (
-                    videos.map(video => (
-                        <Pressable
-                            key={video.id}
-                            style={({ pressed }) => [
-                                styles.videoItem,
-                                pressed && styles.videoItemPressed,
-                            ]}
-                            onPress={() => handleVideoPress(video)}
-                        >
-                            <Text style={styles.videoName}>{video.name}</Text>
-                            <View style={styles.videoDetails}>
-                                <Text style={styles.videoInfo}>
-                                    {formatDuration(video.duration)} •{' '}
-                                    {formatSize(video.size)}
-                                </Text>
-                                <Text style={styles.videoDate}>
-                                    {formatDate(video.created_at)}
-                                </Text>
-                            </View>
-                        </Pressable>
-                    ))
-                )}
-            </ScrollView>
-        </SafeAreaView>
+        <VideoList
+            videos={videos}
+            onRefresh={refetch}
+            onEditVideo={handleEditVideo}
+        />
     )
 }
 
@@ -169,50 +104,57 @@ const styles = StyleSheet.create({
     },
     header: {
         height: 44,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         alignItems: 'center',
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: '#333333',
-        paddingHorizontal: 16,
     },
     headerTitle: {
         fontSize: 16,
         fontWeight: '600',
         color: '#FFFFFF',
-        flex: 1,
-        textAlign: 'center',
-    },
-    closeButton: {
-        width: 60,
-    },
-    closeButtonText: {
-        color: '#0A84FF',
-        fontSize: 17,
     },
     container: {
         flex: 1,
         backgroundColor: '#121212',
+    },
+    scrollContent: {
+        paddingTop: 12,
     },
     message: {
         color: '#666666',
         textAlign: 'center',
         marginTop: 20,
     },
-    videoItem: {
-        backgroundColor: '#1C1C1E',
+    videoItemContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginHorizontal: 16,
         marginTop: 12,
+    },
+    videoItem: {
+        flex: 1,
+        backgroundColor: '#1C1C1E',
         padding: 16,
         borderRadius: 12,
     },
     videoItemPressed: {
         opacity: 0.7,
     },
+    videoItemContent: {
+        flex: 1,
+    },
+    videoTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    videoIcon: {
+        marginRight: 8,
+    },
     videoName: {
         fontSize: 17,
         color: '#FFFFFF',
-        marginBottom: 8,
     },
     videoDetails: {
         flexDirection: 'row',
@@ -235,5 +177,15 @@ const styles = StyleSheet.create({
     videoPlayer: {
         width: '100%',
         height: '100%',
+    },
+    editButton: {
+        marginLeft: 8,
+    },
+    closeButton: {
+        width: 60,
+    },
+    closeButtonText: {
+        color: '#0A84FF',
+        fontSize: 17,
     },
 })

@@ -11,6 +11,13 @@ export default function ProtectedLayout() {
                 }}
             >
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                    name="video-editor/[id]"
+                    options={{
+                        presentation: 'modal',
+                        animation: 'slide_from_bottom',
+                    }}
+                />
             </Stack>
         </StreamProvider>
     )

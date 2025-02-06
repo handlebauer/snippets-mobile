@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import { VideoEditView } from '@/components/video-edit-view'
+
 import { supabase } from '@/lib/supabase.client'
 
 import type { VideoMetadata } from '@/types/webrtc'
@@ -30,6 +32,7 @@ export function VideoDetailsView({ videoId, onClose }: VideoDetailsViewProps) {
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [video, setVideo] = React.useState<VideoMetadata | null>(null)
+    const [isEditing, setIsEditing] = React.useState(false)
 
     // Fetch video details
     React.useEffect(() => {
@@ -115,6 +118,15 @@ export function VideoDetailsView({ videoId, onClose }: VideoDetailsViewProps) {
         )
     }
 
+    if (isEditing && video) {
+        return (
+            <VideoEditView
+                videoId={video.id}
+                onClose={() => setIsEditing(false)}
+            />
+        )
+    }
+
     return (
         <SafeAreaView style={styles.safeArea} edges={['top']}>
             <View style={styles.container}>
@@ -157,10 +169,7 @@ export function VideoDetailsView({ videoId, onClose }: VideoDetailsViewProps) {
                         <View style={styles.buttonContainer}>
                             <Button
                                 mode="contained"
-                                onPress={() => {
-                                    // TODO: Implement video editing
-                                    console.log('🎬 Edit video:', video.id)
-                                }}
+                                onPress={() => setIsEditing(true)}
                                 style={styles.button}
                                 icon="pencil"
                             >
