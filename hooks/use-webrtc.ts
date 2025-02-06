@@ -30,6 +30,8 @@ export function useWebRTC() {
     const peerConnection = useRef<RTCPeerConnection | null>(null)
     const channel = useRef<RealtimeChannel | null>(null)
     const videoChannel = useRef<RealtimeChannel | null>(null)
+    // Candidate queue to buffer ICE candidates received before remoteDescription is set
+    const candidateQueue = useRef<RTCIceCandidate[]>([])
 
     const resetState = useCallback(() => {
         console.log('🔄 Resetting WebRTC state')
@@ -101,12 +103,27 @@ export function useWebRTC() {
                     case 'offer':
                         if (!signal.payload.offer?.sdp) break
                         console.log('📥 Received offer, creating answer')
+                        // Set the remote description first...
                         await pc.setRemoteDescription(
                             new RTCSessionDescription({
                                 type: signal.payload.offer.type,
                                 sdp: signal.payload.offer.sdp,
                             }),
                         )
+                        // Now flush any ICE candidates that arrived before remoteDescription was set.
+                        for (const queuedCandidate of candidateQueue.current) {
+                            try {
+                                await pc.addIceCandidate(queuedCandidate)
+                                console.log('✅ Flushed queued ICE candidate')
+                            } catch (err) {
+                                console.error(
+                                    '❌ Error flushing ICE candidate:',
+                                    err,
+                                )
+                            }
+                        }
+                        candidateQueue.current = []
+
                         const answer = await pc.createAnswer()
                         await pc.setLocalDescription(answer)
                         console.log('📤 Sending answer')
@@ -128,9 +145,19 @@ export function useWebRTC() {
                     case 'ice-candidate':
                         if (!signal.payload.candidate) break
                         console.log('🧊 Received ICE candidate')
-                        await pc.addIceCandidate(
-                            new RTCIceCandidate(signal.payload.candidate),
+                        const candidate = new RTCIceCandidate(
+                            signal.payload.candidate,
                         )
+                        // If remoteDescription isn't set yet, queue the candidate
+                        if (!pc.remoteDescription) {
+                            console.log(
+                                '🌐 Remote description not set yet, queueing ICE candidate',
+                            )
+                            candidateQueue.current.push(candidate)
+                        } else {
+                            await pc.addIceCandidate(candidate)
+                            console.log('✅ Added ICE candidate')
+                        }
                         break
                 }
             } catch (err) {
@@ -215,9 +242,14 @@ export function useWebRTC() {
                     channelName: `video:${state.sessionCode}`,
                     state: newVideoChannel.state,
                 })
-            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            } else if (status === 'CHANNEL_ERROR') {
                 console.error('❌ Video processing channel error:', {
                     status,
+                    channelName: `video:${state.sessionCode}`,
+                    state: newVideoChannel.state,
+                })
+            } else if (status === 'CLOSED') {
+                console.log('👋 Video processing channel closed:', {
                     channelName: `video:${state.sessionCode}`,
                     state: newVideoChannel.state,
                 })
