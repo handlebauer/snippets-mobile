@@ -34,6 +34,8 @@ interface TrimHandleProps {
     otherHandlePosition: Animated.Value
     onDragStart: () => void
     onDragEnd: () => void
+    currentTime: number
+    playheadAnim: Animated.Value
 }
 
 function TrimHandle({
@@ -44,8 +46,12 @@ function TrimHandle({
     otherHandlePosition,
     onDragStart,
     onDragEnd,
+    currentTime,
+    playheadAnim,
 }: TrimHandleProps) {
+    const [isDragging, setIsDragging] = React.useState(false)
     const initialPosition = React.useRef(0)
+    const [currentPos, setCurrentPos] = React.useState(0)
 
     const panResponder = React.useMemo(
         () =>
@@ -54,8 +60,10 @@ function TrimHandle({
                 onMoveShouldSetPanResponder: () => true,
                 onPanResponderTerminationRequest: () => false,
                 onPanResponderGrant: () => {
+                    setIsDragging(true)
                     onDragStart()
                     initialPosition.current = getAnimatedValue(position)
+                    setCurrentPos(getAnimatedValue(position))
                 },
                 onPanResponderMove: (
                     _,
@@ -83,8 +91,15 @@ function TrimHandle({
                               ),
                           )
                     position.setValue(newPos)
+                    setCurrentPos(newPos)
+
+                    // If this is the left handle, update the playhead position
+                    if (isLeft) {
+                        playheadAnim.setValue(newPos)
+                    }
                 },
                 onPanResponderRelease: () => {
+                    setIsDragging(false)
                     onDragEnd()
                 },
             }),
@@ -96,8 +111,13 @@ function TrimHandle({
             otherHandlePosition,
             onDragStart,
             onDragEnd,
+            playheadAnim,
         ],
     )
+
+    const handleTime = (pos: number) => {
+        return (pos / timelineWidth) * duration
+    }
 
     return (
         <Animated.View
@@ -110,6 +130,20 @@ function TrimHandle({
         >
             <View style={styles.trimHandleBar} />
             <View style={styles.trimHandleKnob} />
+            {isDragging && (
+                <View
+                    style={[
+                        styles.timeTextContainer,
+                        isLeft
+                            ? styles.leftTimeTextContainer
+                            : styles.rightTimeTextContainer,
+                    ]}
+                >
+                    <Text style={styles.timeText}>
+                        {formatTime(handleTime(currentPos))}
+                    </Text>
+                </View>
+            )}
         </Animated.View>
     )
 }
@@ -383,6 +417,8 @@ export function VideoScrubber({
                             setIsDraggingTrim(false)
                             onTrimDragEnd()
                         }}
+                        currentTime={currentTime}
+                        playheadAnim={playheadAnim}
                     />
                     <TrimHandle
                         position={rightHandleAnim}
@@ -399,10 +435,12 @@ export function VideoScrubber({
                             setIsDraggingTrim(false)
                             onTrimDragEnd()
                         }}
+                        currentTime={currentTime}
+                        playheadAnim={playheadAnim}
                     />
 
-                    {/* Playhead */}
-                    {!isTrimming && (
+                    {/* Playhead - only show when not dragging trim handles */}
+                    {!isDraggingTrim && (
                         <Animated.View
                             style={[
                                 styles.playhead,
@@ -413,9 +451,11 @@ export function VideoScrubber({
                         >
                             <View style={styles.playheadKnob} />
                             {isScrubbing && (
-                                <Text style={styles.timeText}>
-                                    {formatTime(currentTime)}
-                                </Text>
+                                <View style={styles.timeTextContainer}>
+                                    <Text style={styles.timeText}>
+                                        {formatTime(currentTime)}
+                                    </Text>
+                                </View>
                             )}
                         </Animated.View>
                     )}
@@ -494,20 +534,32 @@ const styles = StyleSheet.create({
         elevation: 3,
         marginLeft: -5,
     },
-    timeText: {
+    timeTextContainer: {
         position: 'absolute',
-        top: -30,
+        top: -36,
         backgroundColor: '#FFB800',
+        borderRadius: 4,
+        padding: 4,
+        minWidth: 45,
+        alignItems: 'center',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
+        elevation: 3,
+        transform: [{ translateX: -22 }],
+    },
+    leftTimeTextContainer: {
+        transform: [{ translateX: -22 }],
+    },
+    rightTimeTextContainer: {
+        transform: [{ translateX: -22 }],
+    },
+    timeText: {
         color: '#000000',
         fontSize: 12,
         fontWeight: '600',
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        borderRadius: 4,
-        overflow: 'hidden',
-        minWidth: 45,
         textAlign: 'center',
-        transform: [{ translateX: -22 }],
     },
     trimHandle: {
         position: 'absolute',
