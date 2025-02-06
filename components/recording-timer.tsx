@@ -4,11 +4,16 @@ import { Text } from 'react-native-paper'
 
 import { useStream } from '@/contexts/recording.context'
 
+import { useScreenOrientation } from '@/hooks/use-screen-orientation'
+
 export function RecordingTimer() {
     const { recordingDuration, recordingStartTime } = useStream()
+    const { isLandscape } = useScreenOrientation()
 
     return (
-        <View style={styles.container}>
+        <View
+            style={[styles.container, isLandscape && styles.containerLandscape]}
+        >
             <Text
                 variant="titleMedium"
                 style={[
@@ -30,6 +35,9 @@ const styles = StyleSheet.create({
         right: 0,
         alignItems: 'center',
         zIndex: 10,
+    },
+    containerLandscape: {
+        top: 16,
     },
     timer: {
         color: '#FFFFFF',
