@@ -345,17 +345,12 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
     return (
         <View style={styles.root}>
             <SafeAreaView style={styles.safeArea} edges={['top']}>
-                {/* Sheet Handle */}
-                <View style={styles.handleContainer}>
-                    <View style={styles.handle} />
-                </View>
-
                 {/* Header */}
                 <View style={styles.navBar}>
                     <Pressable onPress={onClose}>
                         <Text style={styles.navButton}>Cancel</Text>
                     </Pressable>
-                    <Text style={styles.navTitle}>VIDEO</Text>
+                    <Text style={styles.navTitle}>Video</Text>
                     <Pressable onPress={onClose}>
                         <Text style={styles.navButton}>Done</Text>
                     </Pressable>
@@ -421,11 +416,13 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
+        backgroundColor: '#121212',
     },
     container: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: '#121212',
     },
     navBar: {
         height: 44,
@@ -433,6 +430,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
+        backgroundColor: '#121212',
     },
     navButton: {
         fontSize: 17,
@@ -446,20 +444,24 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         justifyContent: 'space-between',
+        backgroundColor: '#121212',
     },
     videoContainer: {
         flex: 1,
         justifyContent: 'center',
+        backgroundColor: '#121212',
     },
     video: {
         width: '100%',
         height: '100%',
+        backgroundColor: '#121212',
     },
     toolbarContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
         paddingVertical: 20,
         paddingBottom: 40,
+        backgroundColor: '#121212',
     },
     toolButton: {
         alignItems: 'center',

@@ -14,8 +14,8 @@ export default function ProtectedLayout() {
                 <Stack.Screen
                     name="video-editor/[id]"
                     options={{
-                        presentation: 'modal',
                         animation: 'slide_from_bottom',
+                        headerShown: false,
                     }}
                 />
             </Stack>
