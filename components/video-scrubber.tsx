@@ -126,6 +126,9 @@ interface VideoScrubberProps {
     trimStart: number
     trimEnd: number
     onTrimChange: (start: number, end: number) => void
+    onTrimDragStart: () => void
+    onTrimDragEnd: () => void
+    isTrimming: boolean
 }
 
 export function VideoScrubber({
@@ -140,6 +143,9 @@ export function VideoScrubber({
     trimStart,
     trimEnd,
     onTrimChange,
+    onTrimDragStart,
+    onTrimDragEnd,
+    isTrimming,
 }: VideoScrubberProps) {
     const [isScrubbing, setIsScrubbing] = React.useState(false)
     const [isDraggingTrim, setIsDraggingTrim] = React.useState(false)
@@ -190,8 +196,15 @@ export function VideoScrubber({
         ) {
             lastCommittedTrim.current = { start: newTrimStart, end: newTrimEnd }
             onTrimChange(newTrimStart, newTrimEnd)
+
+            // Only move playhead if the left handle was dragged
+            // We can determine this by checking if the start time changed
+            if (newTrimStart !== lastCommittedTrim.current.start) {
+                onSeek(newTrimStart)
+                playheadAnim.setValue(leftPos)
+            }
         }
-    }, [duration, onTrimChange])
+    }, [duration, onTrimChange, onSeek, playheadAnim])
 
     const calculateTimelinePosition = (pageX: number): number => {
         const relativeX = pageX - timelineLayout.current.x
@@ -361,10 +374,14 @@ export function VideoScrubber({
                         duration={duration}
                         timelineWidth={timelineLayout.current.width}
                         otherHandlePosition={rightHandleAnim}
-                        onDragStart={() => setIsDraggingTrim(true)}
+                        onDragStart={() => {
+                            setIsDraggingTrim(true)
+                            onTrimDragStart()
+                        }}
                         onDragEnd={() => {
                             commitTrimChanges()
                             setIsDraggingTrim(false)
+                            onTrimDragEnd()
                         }}
                     />
                     <TrimHandle
@@ -373,29 +390,35 @@ export function VideoScrubber({
                         duration={duration}
                         timelineWidth={timelineLayout.current.width}
                         otherHandlePosition={leftHandleAnim}
-                        onDragStart={() => setIsDraggingTrim(true)}
+                        onDragStart={() => {
+                            setIsDraggingTrim(true)
+                            onTrimDragStart()
+                        }}
                         onDragEnd={() => {
                             commitTrimChanges()
                             setIsDraggingTrim(false)
+                            onTrimDragEnd()
                         }}
                     />
 
                     {/* Playhead */}
-                    <Animated.View
-                        style={[
-                            styles.playhead,
-                            {
-                                transform: [{ translateX: playheadAnim }],
-                            },
-                        ]}
-                    >
-                        <View style={styles.playheadKnob} />
-                        {isScrubbing && (
-                            <Text style={styles.timeText}>
-                                {formatTime(currentTime)}
-                            </Text>
-                        )}
-                    </Animated.View>
+                    {!isTrimming && (
+                        <Animated.View
+                            style={[
+                                styles.playhead,
+                                {
+                                    transform: [{ translateX: playheadAnim }],
+                                },
+                            ]}
+                        >
+                            <View style={styles.playheadKnob} />
+                            {isScrubbing && (
+                                <Text style={styles.timeText}>
+                                    {formatTime(currentTime)}
+                                </Text>
+                            )}
+                        </Animated.View>
+                    )}
                 </View>
             </View>
         </View>

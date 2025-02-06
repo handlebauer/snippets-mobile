@@ -48,6 +48,7 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
     const [timelineWidth] = React.useState(0)
     const [isScrubbing] = React.useState(false)
     const [isPlaying, setIsPlaying] = React.useState(false)
+    const [isTrimming, setIsTrimming] = React.useState(false)
     const isPlayingRef = React.useRef(false)
     const videoRef = React.useRef<Video>(null)
     const playheadAnim = React.useRef(new Animated.Value(0)).current
@@ -328,6 +329,21 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                 setTrimStart(validStart)
                 setTrimEnd(validEnd)
 
+                // Check if the current playhead position is before the new trim start
+                if (currentTimeRef.current < validStart) {
+                    // Update the playhead position to the new trim start
+                    updateCurrentTime(validStart)
+                    updateVideoPosition(validStart)
+
+                    // Update the visual playhead position
+                    if (timelineLayout.current.width > 0) {
+                        const newPosition =
+                            (validStart / duration) *
+                            timelineLayout.current.width
+                        playheadAnim.setValue(newPosition)
+                    }
+                }
+
                 // If video is playing, ensure we're within trim bounds
                 if (isPlayingRef.current && currentTimeRef.current) {
                     const constrainedTime = Math.max(
@@ -340,8 +356,17 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                 }
             }
         },
-        [duration, trimStart, trimEnd, updateVideoPosition],
+        [duration, trimStart, trimEnd, updateVideoPosition, updateCurrentTime],
     )
+
+    // Handle trim drag state
+    const handleTrimDragStart = React.useCallback(() => {
+        setIsTrimming(true)
+    }, [])
+
+    const handleTrimDragEnd = React.useCallback(() => {
+        setIsTrimming(false)
+    }, [])
 
     // Handle seeking with trim boundaries
     const handleSeek = React.useCallback(
@@ -439,6 +464,9 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                         trimStart={trimStart}
                         trimEnd={trimEnd}
                         onTrimChange={handleTrimChange}
+                        onTrimDragStart={handleTrimDragStart}
+                        onTrimDragEnd={handleTrimDragEnd}
+                        isTrimming={isTrimming}
                     />
 
                     {/* Bottom Toolbar */}
