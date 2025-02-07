@@ -278,6 +278,19 @@ export function ScreenShareViewer({
                     hidden={isLandscape}
                 />
                 <RecordingTimer />
+                <Pressable
+                    style={[
+                        styles.exitButton,
+                        isLandscape && styles.exitButtonLandscape,
+                    ]}
+                    onPress={onReset}
+                >
+                    <MaterialCommunityIcons
+                        name="chevron-left"
+                        size={28}
+                        color="#FFFFFF"
+                    />
+                </Pressable>
                 <View
                     style={[
                         styles.streamContainer,
@@ -559,5 +572,20 @@ const styles = StyleSheet.create({
         fontSize: 24,
         textAlign: 'center',
         opacity: 0.7,
+    },
+    exitButton: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 64 : 20,
+        left: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+    },
+    exitButtonLandscape: {
+        top: 16,
     },
 })

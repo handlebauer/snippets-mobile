@@ -1,5 +1,5 @@
 import React from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Platform, StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
 
 import { useStream } from '@/contexts/recording.context'
@@ -30,7 +30,7 @@ export function RecordingTimer() {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        top: 60,
+        top: Platform.OS === 'ios' ? 64 : 20,
         left: 0,
         right: 0,
         alignItems: 'center',
@@ -41,11 +41,12 @@ const styles = StyleSheet.create({
     },
     timer: {
         color: '#FFFFFF',
-        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
         paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 3,
-        fontSize: 18,
+        paddingVertical: 6,
+        borderRadius: 4,
+        fontSize: 16,
+        fontWeight: '500',
         overflow: 'hidden',
     },
     timerRecording: {
