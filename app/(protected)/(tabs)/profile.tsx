@@ -71,15 +71,25 @@ const ProfileField: React.FC<ProfileFieldProps> = ({
                     autoFocus
                 />
             ) : (
-                <Text
-                    style={[
-                        styles.fieldValue,
-                        readOnly && styles.fieldValueReadOnly,
-                        !value && styles.fieldValuePlaceholder,
-                    ]}
-                >
-                    {value || placeholder}
-                </Text>
+                <View style={styles.fieldValueContainer}>
+                    <Text
+                        style={[
+                            styles.fieldValue,
+                            readOnly && styles.fieldValueReadOnly,
+                            !value && styles.fieldValuePlaceholder,
+                        ]}
+                    >
+                        {value || placeholder}
+                    </Text>
+                    {readOnly && (
+                        <MaterialCommunityIcons
+                            name="lock"
+                            size={12}
+                            color="#666666"
+                            style={styles.fieldLockIcon}
+                        />
+                    )}
+                </View>
             )}
         </>
     )
@@ -240,6 +250,22 @@ const GitHubConnectionSection: React.FC<{
                     </Pressable>
                 </View>
             )}
+        </View>
+    )
+}
+
+const ProfileSection: React.FC<{
+    title: string
+    icon: keyof typeof MaterialCommunityIcons.glyphMap
+    children: React.ReactNode
+}> = ({ title, icon, children }) => {
+    return (
+        <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name={icon} size={20} color="#FFFFFF" />
+                <Text style={styles.sectionTitle}>{title}</Text>
+            </View>
+            {children}
         </View>
     )
 }
@@ -436,54 +462,41 @@ export default function ProfileScreen() {
                 </View>
             )}
             <ScrollView style={styles.container}>
-                <View style={styles.section}>
-                    <ProfileField
-                        label="Email"
-                        value={session.user.email || 'No email'}
-                        readOnly
-                    />
-                </View>
-
-                <View style={[styles.section, styles.sectionWithGap]}>
-                    <AvatarAndNameField
-                        avatarUrl={profileData.avatar_url}
-                        username={
-                            editingField === 'username'
-                                ? tempValue
-                                : profileData.username
-                        }
-                        onStartEdit={() => handleStartEdit('username')}
-                        isEditing={editingField === 'username'}
-                        onEdit={setTempValue}
-                        placeholder="Enter your name"
-                    />
-                    <View style={styles.divider} />
-                    <ProfileField
-                        label="Website"
-                        value={
-                            editingField === 'website'
-                                ? tempValue
-                                : profileData.website
-                        }
-                        onEdit={setTempValue}
-                        isEditing={editingField === 'website'}
-                        onStartEdit={() => handleStartEdit('website')}
-                        placeholder="https://example.com"
-                    />
-                    <View style={styles.divider} />
-                    <ProfileField
-                        label="GitHub"
-                        value={
-                            editingField === 'github_url'
-                                ? tempValue
-                                : profileData.github_url
-                        }
-                        onEdit={setTempValue}
-                        isEditing={editingField === 'github_url'}
-                        onStartEdit={() => handleStartEdit('github_url')}
-                        placeholder="https://github.com/username"
-                    />
-                </View>
+                <ProfileSection title="Account" icon="account">
+                    <View style={styles.sectionContent}>
+                        <AvatarAndNameField
+                            avatarUrl={profileData.avatar_url}
+                            username={
+                                editingField === 'username'
+                                    ? tempValue
+                                    : profileData.username
+                            }
+                            onStartEdit={() => handleStartEdit('username')}
+                            isEditing={editingField === 'username'}
+                            onEdit={setTempValue}
+                            placeholder="Enter your name"
+                        />
+                        <View style={styles.divider} />
+                        <ProfileField
+                            label="Email"
+                            value={session.user.email || 'No email'}
+                            readOnly
+                        />
+                        <View style={styles.divider} />
+                        <ProfileField
+                            label="Website"
+                            value={
+                                editingField === 'website'
+                                    ? tempValue
+                                    : profileData.website
+                            }
+                            onEdit={setTempValue}
+                            isEditing={editingField === 'website'}
+                            onStartEdit={() => handleStartEdit('website')}
+                            placeholder="https://example.com"
+                        />
+                    </View>
+                </ProfileSection>
 
                 <GitHubConnectionSection
                     isConnected={profileData.github_connected || false}
@@ -568,7 +581,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     fieldContainerReadOnly: {
-        opacity: 0.8,
+        backgroundColor: '#1C1C1E',
     },
     fieldLabel: {
         fontSize: 14,
@@ -583,7 +596,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     fieldValueReadOnly: {
-        color: '#CCCCCC',
+        color: '#999999',
     },
     fieldValuePlaceholder: {
         color: '#666666',
@@ -704,5 +717,16 @@ const styles = StyleSheet.create({
         color: '#FF453A',
         fontSize: 17,
         fontWeight: '500',
+    },
+    sectionContent: {
+        padding: 16,
+    },
+    fieldValueContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    fieldLockIcon: {
+        marginTop: 1,
     },
 })
