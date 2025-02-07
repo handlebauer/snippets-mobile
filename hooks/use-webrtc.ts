@@ -71,11 +71,24 @@ export function useWebRTC() {
             })
 
             pc.addEventListener('connectionstatechange', () => {
-                console.log('📡 WebRTC Connection State:', pc.connectionState)
+                console.log('📡 WebRTC Connection State:', pc.connectionState, {
+                    iceConnectionState: pc.iceConnectionState,
+                    iceGatheringState: pc.iceGatheringState,
+                    signalingState: pc.signalingState,
+                })
+
                 switch (pc.connectionState) {
                     case 'disconnected':
                     case 'failed':
+                        console.log('❌ Connection failed or disconnected', {
+                            connectionState: pc.connectionState,
+                            iceConnectionState: pc.iceConnectionState,
+                        })
                         resetState()
+                        Alert.alert(
+                            'Connection Lost',
+                            'The screen sharing connection was lost. Please try again.',
+                        )
                         break
                     case 'connecting':
                         setState(prev => ({
@@ -84,9 +97,27 @@ export function useWebRTC() {
                         }))
                         break
                     case 'connected':
+                        console.log('✅ Connection established successfully')
                         setState(prev => ({ ...prev, statusMessage: null }))
                         break
                 }
+            })
+
+            pc.addEventListener('iceconnectionstatechange', () => {
+                console.log('🧊 ICE Connection State:', pc.iceConnectionState)
+                if (pc.iceConnectionState === 'failed') {
+                    console.log(
+                        '❌ ICE Connection failed - possible TURN server needed',
+                    )
+                    Alert.alert(
+                        'Connection Failed',
+                        'Unable to establish a direct connection. This might be due to network restrictions.',
+                    )
+                }
+            })
+
+            pc.addEventListener('icegatheringstatechange', () => {
+                console.log('🧊 ICE Gathering State:', pc.iceGatheringState)
             })
         },
         [resetState],
@@ -185,6 +216,20 @@ export function useWebRTC() {
             hasExistingChannel: !!channel.current,
             hasExistingVideoChannel: !!videoChannel.current,
         })
+
+        const connectionTimeout = setTimeout(() => {
+            if (peerConnection.current?.connectionState !== 'connected') {
+                console.log(
+                    '⏰ Connection timeout - connection not established',
+                )
+                Alert.alert(
+                    'Connection Timeout',
+                    'Unable to establish connection. Please check your network and try again.',
+                )
+                resetState()
+            }
+        }, 30000) // 30 second timeout
+
         setState(prev => ({ ...prev, statusMessage: STATUS_MESSAGES.WAITING }))
 
         // Create and subscribe to the signaling channel first
@@ -324,6 +369,7 @@ export function useWebRTC() {
         )
 
         return () => {
+            clearTimeout(connectionTimeout)
             pc.close()
             supabase.removeChannel(newChannel)
             supabase.removeChannel(newVideoChannel)
