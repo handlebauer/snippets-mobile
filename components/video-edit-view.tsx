@@ -566,7 +566,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                         <Text style={styles.navButton}>Back</Text>
                     </Pressable>
                     <View style={styles.titleContainer}>
-                        <Text style={styles.navTitle}>Edit Video</Text>
+                        <Text style={styles.navTitle}> Video</Text>
                         <Pressable
                             onPress={() => setShowMetadataModal(true)}
                             style={styles.infoButton}
