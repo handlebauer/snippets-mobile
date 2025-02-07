@@ -307,6 +307,11 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     // Generate thumbnails
     const generateThumbnails = React.useCallback(
         async (videoUri: string) => {
+            // If thumbnails are already generated or loading, skip
+            if (thumbnailsLoading || thumbnails.length > 0) {
+                return
+            }
+
             if (!duration) {
                 console.warn(
                     '❌ Cannot generate thumbnails: duration is not set',
@@ -356,25 +361,26 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                 setThumbnailsLoading(false)
             }
         },
-        [duration],
+        [duration, thumbnailsLoading, thumbnails.length], // Include necessary dependencies
     )
 
     // Effect to trigger thumbnail generation when video URL and duration are available
     React.useEffect(() => {
-        if (videoUrl && duration > 0) {
+        const shouldGenerateThumbnails =
+            videoUrl &&
+            duration > 0 &&
+            !thumbnailsLoading &&
+            thumbnails.length === 0
+
+        if (shouldGenerateThumbnails) {
             console.log('Generating thumbnails', {
                 existingThumbnails: thumbnails.length,
                 isLoading: thumbnailsLoading,
+                duration,
             })
             generateThumbnails(videoUrl)
         }
-    }, [
-        videoUrl,
-        duration,
-        generateThumbnails,
-        thumbnails.length,
-        thumbnailsLoading,
-    ])
+    }, [videoUrl, duration, generateThumbnails]) // Include generateThumbnails since it now depends on state
 
     // Handle video load
     const handleVideoLoad = (status: AVPlaybackStatus) => {
