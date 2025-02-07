@@ -451,7 +451,7 @@ export default function ProfileScreen() {
             <StatusBar style="light" />
             {editingField ? (
                 <NavigationBar
-                    title="Edit profile"
+                    title="Profile"
                     onCancel={handleCancel}
                     onSave={handleSave}
                     hasChanges={hasChanges}

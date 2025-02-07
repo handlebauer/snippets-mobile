@@ -143,7 +143,7 @@ export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#000000',
+        backgroundColor: '#121212',
     },
     header: {
         height: 44,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
         margin: 0,
     },
     gridContainer: {
-        minHeight: '100%',
+        flexGrow: 1,
     },
     gridItem: {
         width: ITEM_WIDTH,
@@ -205,7 +205,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         padding: 32,
-        marginTop: '50%',
     },
     emptyText: {
         color: '#FFFFFF',

@@ -2,17 +2,30 @@ import React from 'react'
 import { StyleSheet } from 'react-native'
 import { useTheme } from 'react-native-paper'
 
+import { BlurView } from 'expo-blur'
 import { Tabs } from 'expo-router'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { useStream } from '@/contexts/recording.context'
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
-    name: React.ComponentProps<typeof FontAwesome>['name']
+    name: React.ComponentProps<typeof MaterialCommunityIcons>['name']
     color: string
+    activeIcon: React.ComponentProps<typeof MaterialCommunityIcons>['name']
 }) {
-    return <FontAwesome size={28} style={styles.tabBarIcon} {...props} />
+    // If the color matches the primary color, the tab is active
+    const theme = useTheme()
+    const isActive = props.color === theme.colors.primary
+
+    return (
+        <MaterialCommunityIcons
+            size={32}
+            style={styles.tabBarIcon}
+            name={isActive ? props.activeIcon : props.name}
+            color={props.color}
+        />
+    )
 }
 
 export default function TabLayout() {
@@ -23,25 +36,52 @@ export default function TabLayout() {
         <Tabs
             screenOptions={{
                 tabBarActiveTintColor: theme.colors.primary,
+                tabBarInactiveTintColor: '#666666',
                 headerShown: false,
-                tabBarStyle: isStreaming ? { display: 'none' } : undefined,
+                tabBarStyle: {
+                    display: isStreaming ? 'none' : 'flex',
+                    height: 75,
+                    paddingBottom: 25,
+                    backgroundColor: 'transparent',
+                    borderTopColor: 'transparent',
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    elevation: 0,
+                },
+                tabBarBackground: () => (
+                    <BlurView
+                        tint="dark"
+                        intensity={80}
+                        style={StyleSheet.absoluteFill}
+                    />
+                ),
             }}
         >
-            <Tabs.Screen
-                name="index"
-                options={{
-                    title: 'Capture',
-                    tabBarIcon: ({ color }) => (
-                        <TabBarIcon name="code" color={color} />
-                    ),
-                }}
-            />
             <Tabs.Screen
                 name="videos"
                 options={{
                     title: 'Videos',
                     tabBarIcon: ({ color }) => (
-                        <TabBarIcon name="list" color={color} />
+                        <TabBarIcon
+                            name="movie-open-outline"
+                            activeIcon="movie-open"
+                            color={color}
+                        />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="index"
+                options={{
+                    title: 'Record',
+                    tabBarIcon: ({ color }) => (
+                        <TabBarIcon
+                            name="plus-circle-outline"
+                            activeIcon="plus-circle"
+                            color={color}
+                        />
                     ),
                 }}
             />
@@ -50,7 +90,11 @@ export default function TabLayout() {
                 options={{
                     title: 'Profile',
                     tabBarIcon: ({ color }) => (
-                        <TabBarIcon name="user" color={color} />
+                        <TabBarIcon
+                            name="account-outline"
+                            activeIcon="account"
+                            color={color}
+                        />
                     ),
                 }}
             />
@@ -60,7 +104,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
     tabBarIcon: {
-        marginBottom: -3,
+        marginBottom: 0,
     },
     headerButton: {
         marginRight: 15,
