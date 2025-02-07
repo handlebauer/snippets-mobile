@@ -542,7 +542,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     }
 
     // Replace onClose with router.back()
-    const handleBack = () => {
+    const handleCancel = () => {
         router.back()
     }
 
@@ -551,7 +551,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <View style={styles.container}>
                     <Text style={styles.errorText}>{error}</Text>
-                    <Pressable onPress={handleBack} style={styles.button}>
+                    <Pressable onPress={handleCancel} style={styles.button}>
                         <Text style={styles.buttonText}>Back</Text>
                     </Pressable>
                 </View>
@@ -593,8 +593,8 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                         isLandscape && styles.navBarLandscape,
                     ]}
                 >
-                    <Pressable onPress={handleBack}>
-                        <Text style={styles.navButton}>Back</Text>
+                    <Pressable onPress={handleCancel}>
+                        <Text style={styles.navButton}>Cancel</Text>
                     </Pressable>
                     <View style={styles.titleContainer}>
                         <Text style={styles.navTitle}> Video</Text>
@@ -1214,7 +1214,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: Platform.OS === 'ios' ? 64 : 32, // Extra padding for notch area
     },
     navButton: {
-        fontSize: 17,
+        fontSize: 16,
         color: '#FFFFFF',
     },
     navTitle: {
