@@ -10,7 +10,13 @@ export default function ProtectedLayout() {
                     headerShown: false,
                 }}
             >
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                    name="(tabs)"
+                    options={{
+                        headerShown: false,
+                        orientation: 'all',
+                    }}
+                />
                 <Stack.Screen
                     name="video-editor/[id]"
                     options={{
