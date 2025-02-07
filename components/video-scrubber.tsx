@@ -14,11 +14,12 @@ import { Text } from 'react-native-paper'
 import { Video } from 'expo-av'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
-// Format time helper (e.g., 65.3 -> "1:05")
+// Format time helper (e.g., 65.342 -> "00:04.87")
 const formatTime = (timeInSeconds: number): string => {
     const minutes = Math.floor(timeInSeconds / 60)
     const seconds = Math.floor(timeInSeconds % 60)
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+    const centiseconds = Math.floor((timeInSeconds % 1) * 100)
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`
 }
 
 // Helper to safely get animated value
@@ -539,27 +540,30 @@ const styles = StyleSheet.create({
         top: -36,
         backgroundColor: '#FFB800',
         borderRadius: 4,
-        padding: 4,
-        minWidth: 45,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        minWidth: 75,
         alignItems: 'center',
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.3,
         shadowRadius: 2,
         elevation: 3,
-        transform: [{ translateX: -22 }],
+        transform: [{ translateX: -28 }],
     },
     leftTimeTextContainer: {
-        transform: [{ translateX: -22 }],
+        transform: [{ translateX: -28 }],
     },
     rightTimeTextContainer: {
-        transform: [{ translateX: -22 }],
+        transform: [{ translateX: -28 }],
     },
     timeText: {
         color: '#000000',
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '500',
         textAlign: 'center',
+        fontFamily: 'System',
+        lineHeight: 16,
     },
     trimHandle: {
         position: 'absolute',
