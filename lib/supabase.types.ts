@@ -37,7 +37,12 @@ export type Database = {
             profiles: {
                 Row: {
                     avatar_url: string | null
+                    github_access_token: string | null
+                    github_connected: boolean | null
+                    github_installation_id: string | null
+                    github_token_expires_at: string | null
                     github_url: string | null
+                    github_username: string | null
                     id: string
                     updated_at: string | null
                     username: string | null
@@ -45,7 +50,12 @@ export type Database = {
                 }
                 Insert: {
                     avatar_url?: string | null
+                    github_access_token?: string | null
+                    github_connected?: boolean | null
+                    github_installation_id?: string | null
+                    github_token_expires_at?: string | null
                     github_url?: string | null
+                    github_username?: string | null
                     id: string
                     updated_at?: string | null
                     username?: string | null
@@ -53,7 +63,12 @@ export type Database = {
                 }
                 Update: {
                     avatar_url?: string | null
+                    github_access_token?: string | null
+                    github_connected?: boolean | null
+                    github_installation_id?: string | null
+                    github_token_expires_at?: string | null
                     github_url?: string | null
+                    github_username?: string | null
                     id?: string
                     updated_at?: string | null
                     username?: string | null

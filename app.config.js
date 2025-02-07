@@ -54,6 +54,8 @@ export default {
             supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
             openshotAccessKey: process.env.OPENSHOT_ACCESS_KEY,
             openshotBaseUrl: process.env.OPENSHOT_BASE_URL,
+            githubOAuthClientId: process.env.GITHUB_APP_CLIENT_ID,
+            githubOAuthClientSecret: process.env.GITHUB_APP_CLIENT_SECRET,
             eas: {
                 projectId: 'abd6e45d-9048-467e-a2c9-597877588671',
             },

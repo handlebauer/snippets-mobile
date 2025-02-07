@@ -4,6 +4,10 @@ create table if not exists public.profiles (
     avatar_url text,
     website text,
     github_url text,
+    github_connected boolean default false,
+    github_username text,
+    github_access_token text,
+    github_token_expires_at timestamp with time zone,
     updated_at timestamp with time zone,
     
     constraint username_length check (char_length(username) >= 3)

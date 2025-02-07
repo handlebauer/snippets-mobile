@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import {
+    Alert,
     Image,
     Keyboard,
+    Linking,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -11,8 +13,10 @@ import {
 import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import Constants from 'expo-constants'
 import { router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { Session } from '@supabase/supabase-js'
 
@@ -23,6 +27,11 @@ interface ProfileData {
     website: string
     github_url: string
     avatar_url: string
+    github_connected: boolean
+    github_username?: string
+    github_installation_id?: string
+    github_access_token?: string
+    github_token_expires_at?: string
 }
 
 interface ProfileFieldProps {
@@ -169,6 +178,72 @@ const NavigationBar = ({
     </View>
 )
 
+const GitHubConnectionSection: React.FC<{
+    isConnected: boolean
+    username?: string
+    onConnect: () => void
+    onDisconnect: () => void
+}> = ({ isConnected, username, onConnect, onDisconnect }) => {
+    return (
+        <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons
+                    name="github"
+                    size={20}
+                    color="#FFFFFF"
+                />
+                <Text style={styles.sectionTitle}>GitHub Connection</Text>
+            </View>
+            {isConnected ? (
+                <>
+                    <View style={styles.githubConnectedContainer}>
+                        <View style={styles.githubStatusContainer}>
+                            <MaterialCommunityIcons
+                                name="check-circle"
+                                size={20}
+                                color="#4CAF50"
+                            />
+                            <Text style={styles.githubConnectedText}>
+                                Connected as {username}
+                            </Text>
+                        </View>
+                        <Pressable
+                            onPress={onDisconnect}
+                            style={({ pressed }) => [
+                                styles.githubButton,
+                                styles.githubDisconnectButton,
+                                pressed && styles.githubButtonPressed,
+                            ]}
+                        >
+                            <Text style={styles.githubDisconnectButtonText}>
+                                Disconnect
+                            </Text>
+                        </Pressable>
+                    </View>
+                </>
+            ) : (
+                <View style={styles.githubConnectContainer}>
+                    <Text style={styles.githubDescription}>
+                        Connect your GitHub account to access your repositories
+                        and collaborate with your team.
+                    </Text>
+                    <Pressable
+                        onPress={onConnect}
+                        style={({ pressed }) => [
+                            styles.githubButton,
+                            pressed && styles.githubButtonPressed,
+                        ]}
+                    >
+                        <Text style={styles.githubButtonText}>
+                            Connect GitHub Account
+                        </Text>
+                    </Pressable>
+                </View>
+            )}
+        </View>
+    )
+}
+
 export default function ProfileScreen() {
     const [session, setSession] = useState<Session | null>(null)
     const [profileData, setProfileData] = useState<ProfileData>({
@@ -176,11 +251,13 @@ export default function ProfileScreen() {
         website: '',
         github_url: '',
         avatar_url: '',
+        github_connected: false,
     })
     const [editingField, setEditingField] = useState<keyof ProfileData | null>(
         null,
     )
     const [tempValue, setTempValue] = useState('')
+    const [, setIsConnectingGitHub] = useState(false)
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -195,7 +272,9 @@ export default function ProfileScreen() {
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('username, website, github_url, avatar_url')
+                .select(
+                    'username, website, github_url, avatar_url, github_connected, github_username, github_installation_id, github_access_token, github_token_expires_at',
+                )
                 .eq('id', userId)
                 .single()
 
@@ -208,7 +287,7 @@ export default function ProfileScreen() {
 
     const handleStartEdit = (field: keyof ProfileData) => {
         setEditingField(field)
-        setTempValue(profileData[field])
+        setTempValue(String(profileData[field] ?? ''))
     }
 
     const handleSave = async () => {
@@ -249,6 +328,89 @@ export default function ProfileScreen() {
             router.replace('/(auth)')
         } catch (error) {
             console.error('Error signing out:', error)
+        }
+    }
+
+    const handleConnectGitHub = async () => {
+        if (!session?.user.id) return
+
+        try {
+            setIsConnectingGitHub(true)
+
+            // GitHub OAuth configuration
+            const githubConfig = {
+                clientId: Constants.expoConfig?.extra
+                    ?.githubOAuthClientId as string,
+            }
+
+            if (!githubConfig.clientId) {
+                throw new Error('GitHub OAuth configuration is missing')
+            }
+
+            // Construct the GitHub OAuth URL with necessary scopes
+            const authUrl =
+                `https://github.com/login/oauth/authorize?` +
+                `client_id=${encodeURIComponent(githubConfig.clientId)}` +
+                `&redirect_uri=${encodeURIComponent('snippets://auth/callback')}` +
+                `&state=${encodeURIComponent(session.user.id)}` +
+                `&scope=${encodeURIComponent('repo read:user user:email')}`
+
+            // Open GitHub OAuth page
+            await Linking.openURL(authUrl)
+        } catch (error) {
+            console.error('Error connecting to GitHub:', error)
+            Alert.alert(
+                'GitHub Connection Failed',
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to connect to GitHub',
+            )
+        } finally {
+            setIsConnectingGitHub(false)
+        }
+    }
+
+    const handleDisconnectGitHub = async () => {
+        if (!session?.user.id) return
+
+        try {
+            // Remove the GitHub App installation
+            if (profileData.github_installation_id) {
+                // TODO: Call GitHub API to delete the installation
+                // This should be done through a secure backend function
+            }
+
+            // Update the profile to remove GitHub connection
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    github_connected: false,
+                    github_username: null,
+                    github_installation_id: null,
+                    github_access_token: null,
+                    github_token_expires_at: null,
+                })
+                .eq('id', session.user.id)
+
+            if (error) throw error
+
+            // Update local state
+            setProfileData(prev => ({
+                ...prev,
+                github_connected: false,
+                github_username: undefined,
+                github_installation_id: undefined,
+                github_access_token: undefined,
+                github_token_expires_at: undefined,
+            }))
+        } catch (error) {
+            console.error('Error disconnecting from GitHub:', error)
+            Alert.alert(
+                'GitHub Disconnection Failed',
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to disconnect from GitHub',
+            )
         }
     }
 
@@ -322,6 +484,13 @@ export default function ProfileScreen() {
                         placeholder="https://github.com/username"
                     />
                 </View>
+
+                <GitHubConnectionSection
+                    isConnected={profileData.github_connected || false}
+                    username={profileData.github_username}
+                    onConnect={handleConnectGitHub}
+                    onDisconnect={handleDisconnectGitHub}
+                />
 
                 <Pressable
                     onPress={handleSignOut}
@@ -476,5 +645,64 @@ const styles = StyleSheet.create({
         flex: 1,
         marginLeft: 16,
         justifyContent: 'center',
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#333333',
+        gap: 8,
+    },
+    sectionTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    githubConnectedContainer: {
+        padding: 16,
+    },
+    githubConnectContainer: {
+        padding: 16,
+        gap: 16,
+    },
+    githubStatusContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+    },
+    githubConnectedText: {
+        fontSize: 15,
+        color: '#FFFFFF',
+    },
+    githubDescription: {
+        fontSize: 15,
+        color: '#8E8E93',
+        lineHeight: 20,
+    },
+    githubButton: {
+        backgroundColor: '#2C2C2E',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    githubButtonPressed: {
+        opacity: 0.7,
+    },
+    githubButtonText: {
+        color: '#0A84FF',
+        fontSize: 17,
+        fontWeight: '500',
+    },
+    githubDisconnectButton: {
+        backgroundColor: '#2C2C2E',
+    },
+    githubDisconnectButtonText: {
+        color: '#FF453A',
+        fontSize: 17,
+        fontWeight: '500',
     },
 })
