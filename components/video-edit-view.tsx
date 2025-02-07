@@ -1,6 +1,13 @@
 import { Buffer } from 'buffer'
 import React from 'react'
-import { Animated, Pressable, StyleSheet, View } from 'react-native'
+import {
+    Animated,
+    Platform,
+    Pressable,
+    StatusBar,
+    StyleSheet,
+    View,
+} from 'react-native'
 import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -12,6 +19,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native'
 
 import { supabase } from '@/lib/supabase.client'
+import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
 import { VideoScrubber } from './video-scrubber'
 
@@ -62,6 +70,8 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
         width: 0,
     })
     const animationFrameRef = React.useRef<number>()
+    const { isLandscape, unlockOrientation, lockToPortrait } =
+        useScreenOrientation()
 
     // Update both ref and state when setting time
     const updateCurrentTime = React.useCallback((time: number) => {
@@ -468,6 +478,17 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
         console.error('🚨 Video loading error:', error)
     }
 
+    // Handle orientation on mount/unmount
+    React.useEffect(() => {
+        // Unlock orientation when component mounts
+        unlockOrientation()
+
+        // Lock back to portrait when component unmounts
+        return () => {
+            lockToPortrait()
+        }
+    }, [unlockOrientation, lockToPortrait])
+
     if (loading || !video || !videoUrl) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -497,9 +518,23 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
 
     return (
         <View style={styles.root}>
-            <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <StatusBar
+                translucent={true}
+                backgroundColor="transparent"
+                barStyle="light-content"
+                hidden={isLandscape}
+            />
+            <SafeAreaView
+                style={styles.safeArea}
+                edges={isLandscape ? ['left', 'right'] : ['top']}
+            >
                 {/* Header */}
-                <View style={styles.navBar}>
+                <View
+                    style={[
+                        styles.navBar,
+                        isLandscape && styles.navBarLandscape,
+                    ]}
+                >
                     <Pressable onPress={onClose}>
                         <Text style={styles.navButton}>Cancel</Text>
                     </Pressable>
@@ -673,61 +708,149 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                 </View>
 
                 {/* Main Content */}
-                <View style={styles.content}>
-                    {/* Video Preview */}
-                    <View style={styles.videoContainer}>
-                        <Video
-                            ref={videoRef}
-                            source={{ uri: videoUrl }}
-                            style={styles.video}
-                            resizeMode={ResizeMode.CONTAIN}
-                            onLoad={handleVideoLoad}
-                            onPlaybackStatusUpdate={handleVideoStatus}
-                            onError={handleError}
-                            useNativeControls={false}
-                            shouldPlay={false}
-                            isLooping={false}
-                            volume={1.0}
-                        />
+                <View
+                    style={[
+                        styles.content,
+                        isLandscape && styles.contentLandscape,
+                    ]}
+                >
+                    {/* Toolbar Container - Moved to be first in landscape */}
+                    {isLandscape && (
+                        <View
+                            style={[
+                                styles.controlsContainer,
+                                styles.controlsContainerLandscape,
+                            ]}
+                        >
+                            <View
+                                style={[
+                                    styles.toolbarContainer,
+                                    styles.toolbarContainerLandscape,
+                                ]}
+                            >
+                                <View style={styles.toolButton}>
+                                    <MaterialCommunityIcons
+                                        name="video"
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={styles.toolButtonText}>
+                                        Video
+                                    </Text>
+                                </View>
+                                <View style={styles.toolButton}>
+                                    <MaterialCommunityIcons
+                                        name="crop"
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={styles.toolButtonText}>
+                                        Crop
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Main Container */}
+                    <View
+                        style={[
+                            styles.mainContainer,
+                            isLandscape && styles.mainContainerLandscape,
+                        ]}
+                    >
+                        {/* Video Preview */}
+                        <View
+                            style={[
+                                styles.videoContainer,
+                                isLandscape && styles.videoContainerLandscape,
+                            ]}
+                        >
+                            <Video
+                                ref={videoRef}
+                                source={{ uri: videoUrl }}
+                                style={[
+                                    styles.video,
+                                    isLandscape && styles.videoLandscape,
+                                ]}
+                                resizeMode={ResizeMode.CONTAIN}
+                                onLoad={handleVideoLoad}
+                                onPlaybackStatusUpdate={handleVideoStatus}
+                                onError={handleError}
+                                useNativeControls={false}
+                                shouldPlay={false}
+                                isLooping={false}
+                                volume={1.0}
+                            />
+                        </View>
+
+                        {/* Scrubber */}
+                        {isLandscape ? (
+                            <View style={styles.scrubberContainerLandscape}>
+                                <VideoScrubber
+                                    videoRef={videoRef}
+                                    duration={duration}
+                                    currentTime={currentTimeRef.current}
+                                    isPlaying={isPlaying}
+                                    thumbnails={thumbnails}
+                                    thumbnailsLoading={thumbnailsLoading}
+                                    onSeek={handleSeek}
+                                    onPlayPause={togglePlayback}
+                                    trimStart={trimStart}
+                                    trimEnd={trimEnd}
+                                    onTrimChange={handleTrimChange}
+                                    onTrimDragStart={handleTrimDragStart}
+                                    onTrimDragEnd={handleTrimDragEnd}
+                                    isTrimming={isTrimming}
+                                />
+                            </View>
+                        ) : (
+                            <VideoScrubber
+                                videoRef={videoRef}
+                                duration={duration}
+                                currentTime={currentTimeRef.current}
+                                isPlaying={isPlaying}
+                                thumbnails={thumbnails}
+                                thumbnailsLoading={thumbnailsLoading}
+                                onSeek={handleSeek}
+                                onPlayPause={togglePlayback}
+                                trimStart={trimStart}
+                                trimEnd={trimEnd}
+                                onTrimChange={handleTrimChange}
+                                onTrimDragStart={handleTrimDragStart}
+                                onTrimDragEnd={handleTrimDragEnd}
+                                isTrimming={isTrimming}
+                            />
+                        )}
                     </View>
 
-                    {/* Scrubber */}
-                    <VideoScrubber
-                        videoRef={videoRef}
-                        duration={duration}
-                        currentTime={currentTimeRef.current}
-                        isPlaying={isPlaying}
-                        thumbnails={thumbnails}
-                        thumbnailsLoading={thumbnailsLoading}
-                        onSeek={handleSeek}
-                        onPlayPause={togglePlayback}
-                        trimStart={trimStart}
-                        trimEnd={trimEnd}
-                        onTrimChange={handleTrimChange}
-                        onTrimDragStart={handleTrimDragStart}
-                        onTrimDragEnd={handleTrimDragEnd}
-                        isTrimming={isTrimming}
-                    />
-
-                    {/* Bottom Toolbar */}
-                    <View style={styles.toolbarContainer}>
-                        <View style={styles.toolButton}>
-                            <MaterialCommunityIcons
-                                name="video"
-                                size={24}
-                                color="#FFFFFF"
-                            />
-                            <Text style={styles.toolButtonText}>Video</Text>
+                    {/* Toolbar Container - Portrait mode */}
+                    {!isLandscape && (
+                        <View style={styles.controlsContainer}>
+                            <View style={styles.toolbarContainer}>
+                                <View style={styles.toolButton}>
+                                    <MaterialCommunityIcons
+                                        name="video"
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={styles.toolButtonText}>
+                                        Video
+                                    </Text>
+                                </View>
+                                <View style={styles.toolButton}>
+                                    <MaterialCommunityIcons
+                                        name="crop"
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={styles.toolButtonText}>
+                                        Crop
+                                    </Text>
+                                </View>
+                            </View>
                         </View>
-                        <View style={styles.toolButton}>
-                            <MaterialCommunityIcons
-                                name="crop"
-                                size={24}
-                                color="#FFFFFF"
-                            />
-                            <Text style={styles.toolButtonText}>Crop</Text>
-                        </View>
-                    </View>
+                    )}
                 </View>
             </SafeAreaView>
         </View>
@@ -754,8 +877,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
+        paddingHorizontal: 32,
         backgroundColor: '#121212',
+        marginTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+    },
+    navBarLandscape: {
+        marginTop: 0,
+        paddingHorizontal: Platform.OS === 'ios' ? 64 : 32, // Extra padding for notch area
     },
     navButton: {
         fontSize: 17,
@@ -771,17 +899,60 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         backgroundColor: '#121212',
     },
+    contentLandscape: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    mainContainer: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+    },
+    mainContainerLandscape: {
+        flex: 1,
+        paddingVertical: 20,
+        alignItems: 'center',
+        marginLeft: Platform.OS === 'ios' ? 64 : 32, // Less margin on the left
+        marginRight: 80, // Just enough space for the toolbar
+    },
     videoContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#121212',
         overflow: 'hidden',
+        width: '100%',
+    },
+    videoContainerLandscape: {
+        flex: 1,
+        marginBottom: 20,
+        width: '100%',
     },
     video: {
         flex: 1,
         aspectRatio: 16 / 9,
         backgroundColor: '#121212',
+    },
+    videoLandscape: {
+        width: '100%',
+        aspectRatio: 16 / 9,
+    },
+    scrubberContainerLandscape: {
+        width: '100%',
+        paddingHorizontal: 32,
+        marginBottom: 20,
+    },
+    controlsContainer: {
+        paddingBottom: 20,
+    },
+    controlsContainerLandscape: {
+        position: 'absolute',
+        right: 0,
+        top: '50%',
+        transform: [{ translateY: -100 }], // Adjusted to better center the container
+        zIndex: 1,
+        height: 200, // Fixed height to help with centering
+        justifyContent: 'center', // Center content vertically
     },
     toolbarContainer: {
         flexDirection: 'row',
@@ -790,8 +961,17 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
         backgroundColor: '#121212',
     },
+    toolbarContainerLandscape: {
+        flexDirection: 'column',
+        paddingVertical: 24,
+        gap: 32,
+        paddingHorizontal: 16,
+        width: 80,
+        alignItems: 'center',
+    },
     toolButton: {
         alignItems: 'center',
+        justifyContent: 'center', // Ensure icon and text are centered
     },
     toolButtonText: {
         color: '#FFFFFF',

@@ -16,6 +16,10 @@ export default function ProtectedLayout() {
                     options={{
                         animation: 'slide_from_bottom',
                         headerShown: false,
+                        presentation: 'modal',
+                        orientation: 'all',
+                        gestureEnabled: true,
+                        fullScreenGestureEnabled: true,
                     }}
                 />
             </Stack>
