@@ -2,6 +2,7 @@ import { Buffer } from 'buffer'
 import React from 'react'
 import {
     Animated,
+    Modal,
     Platform,
     Pressable,
     StatusBar,
@@ -12,6 +13,7 @@ import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ResizeMode, Video } from 'expo-av'
+import { BlurView } from 'expo-blur'
 import * as FileSystem from 'expo-file-system'
 import { useRouter } from 'expo-router'
 import * as VideoThumbnails from 'expo-video-thumbnails'
@@ -29,6 +31,18 @@ import type { AVPlaybackStatus } from 'expo-av'
 
 interface VideoEditViewProps {
     videoId: string
+}
+
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) {
+        return `${bytes} B`
+    } else if (bytes < 1024 * 1024) {
+        return `${(bytes / 1024).toFixed(1)} KB`
+    } else if (bytes < 1024 * 1024 * 1024) {
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    } else {
+        return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+    }
 }
 
 // Throttle helper function
@@ -76,6 +90,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
         'video' | 'adjust' | 'crop'
     >('video')
     const mainContainerRef = React.useRef<View>(null)
+    const [showMetadataModal, setShowMetadataModal] = React.useState(false)
 
     // Update both ref and state when setting time
     const updateCurrentTime = React.useCallback((time: number) => {
@@ -550,7 +565,19 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                     <Pressable onPress={handleBack}>
                         <Text style={styles.navButton}>Back</Text>
                     </Pressable>
-                    <Text style={styles.navTitle}>Edit Video</Text>
+                    <View style={styles.titleContainer}>
+                        <Text style={styles.navTitle}>Edit Video</Text>
+                        <Pressable
+                            onPress={() => setShowMetadataModal(true)}
+                            style={styles.infoButton}
+                        >
+                            <MaterialCommunityIcons
+                                name="information"
+                                size={20}
+                                color="#CCCCCC"
+                            />
+                        </Pressable>
+                    </View>
                     <Pressable
                         onPress={async () => {
                             try {
@@ -718,6 +745,121 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                         <Text style={styles.navButton}>Save</Text>
                     </Pressable>
                 </View>
+
+                {/* Metadata Modal */}
+                <Modal
+                    visible={showMetadataModal}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setShowMetadataModal(false)}
+                    statusBarTranslucent={true}
+                >
+                    <Pressable
+                        style={styles.modalOverlay}
+                        onPress={() => setShowMetadataModal(false)}
+                    >
+                        <View style={styles.modalWrapper}>
+                            <BlurView
+                                intensity={90}
+                                style={styles.modalBlur}
+                                tint="dark"
+                            >
+                                <View style={styles.modalContent}>
+                                    <View style={styles.modalHandle} />
+                                    <Text style={styles.modalTitle}>
+                                        Video Details
+                                    </Text>
+                                    <View style={styles.modalBody}>
+                                        <View style={styles.metadataRow}>
+                                            <MaterialCommunityIcons
+                                                name="clock-outline"
+                                                size={22}
+                                                color="#0A84FF"
+                                            />
+                                            <View
+                                                style={
+                                                    styles.metadataTextContainer
+                                                }
+                                            >
+                                                <Text
+                                                    style={styles.metadataLabel}
+                                                >
+                                                    Duration
+                                                </Text>
+                                                <Text
+                                                    style={styles.metadataValue}
+                                                >
+                                                    {Math.round(video.duration)}
+                                                    s
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.metadataRow}>
+                                            <MaterialCommunityIcons
+                                                name="file-outline"
+                                                size={22}
+                                                color="#0A84FF"
+                                            />
+                                            <View
+                                                style={
+                                                    styles.metadataTextContainer
+                                                }
+                                            >
+                                                <Text
+                                                    style={styles.metadataLabel}
+                                                >
+                                                    Size
+                                                </Text>
+                                                <Text
+                                                    style={styles.metadataValue}
+                                                >
+                                                    {formatFileSize(video.size)}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.metadataRow}>
+                                            <MaterialCommunityIcons
+                                                name="calendar-outline"
+                                                size={22}
+                                                color="#0A84FF"
+                                            />
+                                            <View
+                                                style={
+                                                    styles.metadataTextContainer
+                                                }
+                                            >
+                                                <Text
+                                                    style={styles.metadataLabel}
+                                                >
+                                                    Created
+                                                </Text>
+                                                <Text
+                                                    style={styles.metadataValue}
+                                                >
+                                                    {new Date(
+                                                        video.created_at,
+                                                    ).toLocaleDateString()}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                    <Pressable
+                                        style={styles.modalCloseButton}
+                                        onPress={() =>
+                                            setShowMetadataModal(false)
+                                        }
+                                    >
+                                        <Text
+                                            style={styles.modalCloseButtonText}
+                                        >
+                                            Done
+                                        </Text>
+                                    </Pressable>
+                                </View>
+                            </BlurView>
+                        </View>
+                    </Pressable>
+                </Modal>
 
                 {/* Main Content */}
                 <View
@@ -1159,5 +1301,83 @@ const styles = StyleSheet.create({
         height: 5,
         borderRadius: 2.5,
         backgroundColor: '#424246',
+    },
+    titleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    infoButton: {
+        padding: 4,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        justifyContent: 'flex-end',
+    },
+    modalWrapper: {
+        width: '100%',
+        height: 'auto',
+        position: 'relative',
+    },
+    modalBlur: {
+        overflow: 'hidden',
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+    },
+    modalContent: {
+        width: '100%',
+        paddingTop: 10,
+        paddingBottom: Platform.OS === 'ios' ? 8 : 0,
+    },
+    modalHandle: {
+        width: 36,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: '#808080',
+        alignSelf: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: {
+        fontSize: 17,
+        color: '#FFFFFF',
+        fontWeight: '600',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    modalBody: {
+        paddingHorizontal: 16,
+    },
+    metadataRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+    },
+    metadataTextContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginLeft: 12,
+    },
+    metadataLabel: {
+        color: '#FFFFFF',
+        fontSize: 17,
+    },
+    metadataValue: {
+        color: '#8E8E93',
+        fontSize: 17,
+    },
+    modalCloseButton: {
+        marginTop: 8,
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    modalCloseButtonText: {
+        color: '#0A84FF',
+        fontSize: 17,
+        fontWeight: '400',
     },
 })

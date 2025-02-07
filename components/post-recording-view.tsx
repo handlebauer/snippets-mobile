@@ -3,9 +3,8 @@ import { StyleSheet, View } from 'react-native'
 import { ActivityIndicator, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { useRouter } from 'expo-router'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-
-import { VideoDetailsView } from '@/components/video-details-view'
 
 import type { VideoProcessingSignal } from '@/types/webrtc'
 
@@ -18,6 +17,8 @@ export function PostRecordingView({
     videoProcessing,
     onClose,
 }: PostRecordingViewProps) {
+    const router = useRouter()
+
     // Log when component mounts or updates
     React.useEffect(() => {
         console.log('🎥 PostRecordingView mounted/updated:', {
@@ -40,15 +41,17 @@ export function PostRecordingView({
         })
     }, [videoProcessing.status])
 
-    // If processing is complete and we have a video ID, show the video details
-    if (videoProcessing.status === 'completed' && videoProcessing.videoId) {
-        return (
-            <VideoDetailsView
-                videoId={videoProcessing.videoId}
-                onClose={onClose}
-            />
-        )
-    }
+    // If processing is complete and we have a video ID, navigate to editor
+    React.useEffect(() => {
+        if (videoProcessing.status === 'completed' && videoProcessing.videoId) {
+            console.log(
+                '🎯 Processing complete, navigating to editor:',
+                videoProcessing.videoId,
+            )
+            router.push(`/video-editor/${videoProcessing.videoId}`)
+            onClose()
+        }
+    }, [videoProcessing.status, videoProcessing.videoId, router, onClose])
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['top']}>
