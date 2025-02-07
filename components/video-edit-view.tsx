@@ -70,11 +70,11 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
         width: 0,
     })
     const animationFrameRef = React.useRef<number>()
-    const { isLandscape, unlockOrientation, lockToPortrait } =
-        useScreenOrientation()
+    const { isLandscape } = useScreenOrientation()
     const [activeTab, setActiveTab] = React.useState<
         'video' | 'adjust' | 'crop'
     >('video')
+    const mainContainerRef = React.useRef<View>(null)
 
     // Update both ref and state when setting time
     const updateCurrentTime = React.useCallback((time: number) => {
@@ -360,25 +360,20 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
 
     // Effect to trigger thumbnail generation when video URL and duration are available
     React.useEffect(() => {
-        const shouldGenerateThumbnails =
-            videoUrl &&
-            duration > 0 &&
-            thumbnails.length === 0 &&
-            !thumbnailsLoading
-
-        if (shouldGenerateThumbnails) {
-            console.log(
-                '🎯 Video URL and duration available, generating thumbnails:',
-                {
-                    videoUrl,
-                    duration,
-                    existingThumbnails: thumbnails.length,
-                    isLoading: thumbnailsLoading,
-                },
-            )
+        if (videoUrl && duration > 0) {
+            console.log('Generating thumbnails', {
+                existingThumbnails: thumbnails.length,
+                isLoading: thumbnailsLoading,
+            })
             generateThumbnails(videoUrl)
         }
-    }, [videoUrl, duration, generateThumbnails])
+    }, [
+        videoUrl,
+        duration,
+        generateThumbnails,
+        thumbnails.length,
+        thumbnailsLoading,
+    ])
 
     // Handle video load
     const handleVideoLoad = (status: AVPlaybackStatus) => {
@@ -493,17 +488,6 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
     const handleError = (error: string) => {
         console.error('🚨 Video loading error:', error)
     }
-
-    // Handle orientation on mount/unmount
-    React.useEffect(() => {
-        // Unlock orientation when component mounts
-        unlockOrientation()
-
-        // Lock back to portrait when component unmounts
-        return () => {
-            lockToPortrait()
-        }
-    }, [unlockOrientation, lockToPortrait])
 
     if (loading || !video || !videoUrl) {
         return (
@@ -831,6 +815,7 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
 
                     {/* Main Container */}
                     <View
+                        ref={mainContainerRef}
                         style={[
                             styles.mainContainer,
                             isLandscape && styles.mainContainerLandscape,
@@ -861,7 +846,7 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                             />
                         </View>
 
-                        {/* Scrubber - Only show for video tab */}
+                        {/* Scrubber - simplified layout */}
                         {isLandscape ? (
                             <View style={styles.scrubberContainerLandscape}>
                                 {activeTab === 'video' && (
@@ -1043,19 +1028,18 @@ const styles = StyleSheet.create({
     },
     contentLandscape: {
         flexDirection: 'row',
-        alignItems: 'center',
+        flex: 1,
     },
     mainContainer: {
         flex: 1,
-        display: 'flex',
         flexDirection: 'column',
     },
     mainContainerLandscape: {
         flex: 1,
         paddingVertical: 20,
-        alignItems: 'center',
-        marginLeft: Platform.OS === 'ios' ? 64 : 32, // Less margin on the left
-        marginRight: 80, // Just enough space for the toolbar
+        paddingHorizontal: Platform.OS === 'ios' ? 44 : 32,
+        flexDirection: 'column',
+        justifyContent: 'space-between',
     },
     videoContainer: {
         flex: 1,
@@ -1067,8 +1051,9 @@ const styles = StyleSheet.create({
     },
     videoContainerLandscape: {
         flex: 1,
-        marginBottom: 20,
+        marginBottom: 16,
         width: '100%',
+        maxHeight: '70%', // Ensure video doesn't take too much vertical space
     },
     video: {
         flex: 1,
@@ -1080,22 +1065,19 @@ const styles = StyleSheet.create({
         aspectRatio: 16 / 9,
     },
     scrubberContainerLandscape: {
-        width: '100%',
-        paddingHorizontal: 32,
-        marginBottom: 20,
-        overflow: 'hidden',
+        flex: 0,
+        minHeight: 100,
     },
     controlsContainer: {
         paddingBottom: 20,
     },
     controlsContainerLandscape: {
-        position: 'absolute',
-        right: 0,
-        top: '50%',
-        transform: [{ translateY: -100 }], // Adjusted to better center the container
-        zIndex: 1,
-        height: 200, // Fixed height to help with centering
-        justifyContent: 'center', // Center content vertically
+        width: 100,
+        backgroundColor: '#121212',
+        paddingVertical: 20,
+        borderLeftWidth: StyleSheet.hairlineWidth,
+        borderLeftColor: '#333333',
+        marginLeft: 16, // Add spacing between main content and toolbar
     },
     toolbarContainer: {
         flexDirection: 'row',
@@ -1106,16 +1088,19 @@ const styles = StyleSheet.create({
     },
     toolbarContainerLandscape: {
         flexDirection: 'column',
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-        width: 80,
+        paddingVertical: 0,
+        paddingHorizontal: 0,
+        width: '100%',
         alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
     },
     toolButton: {
         alignItems: 'center',
         justifyContent: 'center',
         marginHorizontal: 20,
         marginVertical: 12,
+        width: 60,
     },
     toolButtonActive: {
         opacity: 1,

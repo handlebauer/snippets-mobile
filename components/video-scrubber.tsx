@@ -149,7 +149,7 @@ function TrimHandle({
     )
 }
 
-interface VideoScrubberProps {
+export interface VideoScrubberProps {
     videoRef: React.RefObject<Video>
     duration: number
     currentTime: number
@@ -185,7 +185,10 @@ export function VideoScrubber({
     const [isScrubbing, setIsScrubbing] = React.useState(false)
     const [isDraggingTrim, setIsDraggingTrim] = React.useState(false)
     const timelineRef = React.useRef<View>(null)
-    const timelineLayout = React.useRef<{ x: number; width: number }>({
+    const [timelineLayout, setTimelineLayout] = React.useState<{
+        x: number
+        width: number
+    }>({
         x: 0,
         width: 0,
     })
@@ -194,23 +197,40 @@ export function VideoScrubber({
     const rightHandleAnim = React.useRef(new Animated.Value(0)).current
     const lastCommittedTrim = React.useRef({ start: trimStart, end: trimEnd })
 
-    // Update handle positions when trim times change from props
-    React.useEffect(() => {
-        if (isDraggingTrim) return
+    // Handle timeline layout changes
+    const handleTimelineLayout = React.useCallback(
+        (event: LayoutChangeEvent) => {
+            timelineRef.current?.measure(
+                (x, y, measuredWidth, height, pageX) => {
+                    const oldWidth = timelineLayout.width
+                    setTimelineLayout({ x: pageX, width: measuredWidth })
 
-        if (timelineLayout.current.width > 0) {
-            const leftPosition =
-                (trimStart / duration) * timelineLayout.current.width
-            const rightPosition =
-                (trimEnd / duration) * timelineLayout.current.width
-            leftHandleAnim.setValue(leftPosition)
-            rightHandleAnim.setValue(rightPosition)
-            lastCommittedTrim.current = { start: trimStart, end: trimEnd }
-        }
-    }, [trimStart, trimEnd, duration, isDraggingTrim])
+                    // Update handle positions on width change
+                    if (oldWidth !== measuredWidth && oldWidth > 0) {
+                        const ratio = measuredWidth / oldWidth
+                        leftHandleAnim.setValue(
+                            getAnimatedValue(leftHandleAnim) * ratio,
+                        )
+                        rightHandleAnim.setValue(
+                            getAnimatedValue(rightHandleAnim) * ratio,
+                        )
+                    } else if (oldWidth === 0) {
+                        // Initial layout
+                        const leftPosition =
+                            (trimStart / duration) * measuredWidth
+                        const rightPosition =
+                            (trimEnd / duration) * measuredWidth
+                        leftHandleAnim.setValue(leftPosition)
+                        rightHandleAnim.setValue(rightPosition)
+                    }
+                },
+            )
+        },
+        [duration, trimStart, trimEnd, leftHandleAnim, rightHandleAnim],
+    )
 
     const commitTrimChanges = React.useCallback(() => {
-        const timelineWidth = timelineLayout.current.width
+        const timelineWidth = timelineLayout.width
         if (!timelineWidth) return
 
         const leftPos = getAnimatedValue(leftHandleAnim)
@@ -242,22 +262,21 @@ export function VideoScrubber({
     }, [duration, onTrimChange, onSeek, playheadAnim])
 
     const calculateTimelinePosition = (pageX: number): number => {
-        const relativeX = pageX - timelineLayout.current.x
-        return Math.max(0, Math.min(relativeX, timelineLayout.current.width))
+        const relativeX = pageX - timelineLayout.x
+        return Math.max(0, Math.min(relativeX, timelineLayout.width))
     }
 
     const updateScrubPosition = (position: number) => {
-        if (!duration || !timelineLayout.current.width) return
+        if (!duration || !timelineLayout.width) return
 
-        const newTime = (position / timelineLayout.current.width) * duration
+        const newTime = (position / timelineLayout.width) * duration
         playheadAnim.setValue(position)
         onSeek(newTime)
     }
 
     React.useEffect(() => {
-        if (!isScrubbing && timelineLayout.current.width > 0) {
-            const position =
-                (currentTime / duration) * timelineLayout.current.width
+        if (!isScrubbing && timelineLayout.width > 0) {
+            const position = (currentTime / duration) * timelineLayout.width
             playheadAnim.setValue(position)
         }
     }, [currentTime, duration, isScrubbing, playheadAnim])
@@ -266,11 +285,7 @@ export function VideoScrubber({
         () =>
             PanResponder.create({
                 onStartShouldSetPanResponder: () => {
-                    if (
-                        isDraggingTrim ||
-                        !duration ||
-                        !timelineLayout.current.width
-                    )
+                    if (isDraggingTrim || !duration || !timelineLayout.width)
                         return false
                     setIsScrubbing(true)
                     return true
@@ -297,40 +312,6 @@ export function VideoScrubber({
                 },
             }),
         [duration, isDraggingTrim],
-    )
-
-    const handleTimelineLayout = React.useCallback(
-        (_: LayoutChangeEvent) => {
-            timelineRef.current?.measure(
-                (_x, _y, measuredWidth, _height, pageX) => {
-                    const oldWidth = timelineLayout.current.width
-                    timelineLayout.current = { x: pageX, width: measuredWidth }
-
-                    if (oldWidth !== measuredWidth && oldWidth > 0) {
-                        const ratio = measuredWidth / oldWidth
-                        const newLeftPos =
-                            getAnimatedValue(leftHandleAnim) * ratio
-                        const newRightPos =
-                            getAnimatedValue(rightHandleAnim) * ratio
-                        leftHandleAnim.setValue(newLeftPos)
-                        rightHandleAnim.setValue(newRightPos)
-                    } else if (oldWidth === 0) {
-                        if (trimStart === 0 && trimEnd === duration) {
-                            leftHandleAnim.setValue(0)
-                            rightHandleAnim.setValue(measuredWidth)
-                        } else {
-                            const leftPosition =
-                                (trimStart / duration) * measuredWidth
-                            const rightPosition =
-                                (trimEnd / duration) * measuredWidth
-                            leftHandleAnim.setValue(leftPosition)
-                            rightHandleAnim.setValue(rightPosition)
-                        }
-                    }
-                },
-            )
-        },
-        [duration, trimStart, trimEnd, leftHandleAnim, rightHandleAnim],
     )
 
     return (
@@ -393,10 +374,11 @@ export function VideoScrubber({
                         style={[
                             styles.selectedRegion,
                             {
+                                position: 'absolute',
                                 left: leftHandleAnim,
-                                right: Animated.subtract(
-                                    timelineLayout.current.width,
+                                width: Animated.subtract(
                                     rightHandleAnim,
+                                    leftHandleAnim,
                                 ),
                             },
                         ]}
@@ -407,7 +389,7 @@ export function VideoScrubber({
                         position={leftHandleAnim}
                         isLeft={true}
                         duration={duration}
-                        timelineWidth={timelineLayout.current.width}
+                        timelineWidth={timelineLayout.width}
                         otherHandlePosition={rightHandleAnim}
                         onDragStart={() => {
                             setIsDraggingTrim(true)
@@ -425,7 +407,7 @@ export function VideoScrubber({
                         position={rightHandleAnim}
                         isLeft={false}
                         duration={duration}
-                        timelineWidth={timelineLayout.current.width}
+                        timelineWidth={timelineLayout.width}
                         otherHandlePosition={leftHandleAnim}
                         onDragStart={() => {
                             setIsDraggingTrim(true)
@@ -468,7 +450,9 @@ export function VideoScrubber({
 
 const styles = StyleSheet.create({
     wrapper: {
-        paddingHorizontal: 32,
+        flex: 0,
+        minHeight: 60,
+        marginHorizontal: 32,
     },
     container: {
         height: 60,
