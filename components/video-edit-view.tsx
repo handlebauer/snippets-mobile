@@ -72,6 +72,9 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
     const animationFrameRef = React.useRef<number>()
     const { isLandscape, unlockOrientation, lockToPortrait } =
         useScreenOrientation()
+    const [activeTab, setActiveTab] = React.useState<
+        'video' | 'adjust' | 'crop'
+    >('video')
 
     // Update both ref and state when setting time
     const updateCurrentTime = React.useCallback((time: number) => {
@@ -166,7 +169,10 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
     // Handle video status update with proper scrubbing check
     const handleVideoStatus = (status: AVPlaybackStatus) => {
         if (!status.isLoaded) {
-            console.warn('❌ Video status update failed:', status)
+            // Only log a warning if this isn't an initial load state
+            if ('target' in status) {
+                console.debug('Video not ready yet:', status)
+            }
             return
         }
 
@@ -297,7 +303,7 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
         fetchVideo()
     }, [videoId])
 
-    // Generate thumbnails when video loads
+    // Generate thumbnails
     const generateThumbnails = React.useCallback(
         async (videoUri: string) => {
             if (!duration) {
@@ -315,7 +321,7 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                 const newThumbnails: string[] = []
 
                 for (let i = 0; i < thumbnailCount; i++) {
-                    const time = i * interval * 1000 // Convert to milliseconds
+                    const time = Math.round(i * interval * 1000) // Convert to milliseconds and round to integer
                     try {
                         console.log(
                             `📸 Generating thumbnail ${i + 1}/${thumbnailCount} at ${time}ms`,
@@ -337,10 +343,12 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                     }
                 }
 
-                console.log(
-                    `🎯 Generated ${newThumbnails.length} thumbnails successfully`,
-                )
-                setThumbnails(newThumbnails)
+                if (newThumbnails.length > 0) {
+                    console.log(
+                        `🎯 Generated ${newThumbnails.length} thumbnails successfully`,
+                    )
+                    setThumbnails(newThumbnails)
+                }
             } catch (err) {
                 console.error('❌ Failed to generate thumbnails:', err)
             } finally {
@@ -352,12 +360,20 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
 
     // Effect to trigger thumbnail generation when video URL and duration are available
     React.useEffect(() => {
-        if (videoUrl && duration > 0) {
+        const shouldGenerateThumbnails =
+            videoUrl &&
+            duration > 0 &&
+            thumbnails.length === 0 &&
+            !thumbnailsLoading
+
+        if (shouldGenerateThumbnails) {
             console.log(
                 '🎯 Video URL and duration available, generating thumbnails:',
                 {
                     videoUrl,
                     duration,
+                    existingThumbnails: thumbnails.length,
+                    isLoading: thumbnailsLoading,
                 },
             )
             generateThumbnails(videoUrl)
@@ -728,26 +744,87 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                                     styles.toolbarContainerLandscape,
                                 ]}
                             >
-                                <View style={styles.toolButton}>
+                                <Pressable
+                                    style={[
+                                        styles.toolButton,
+                                        activeTab === 'video' &&
+                                            styles.toolButtonActive,
+                                    ]}
+                                    onPress={() => setActiveTab('video')}
+                                >
                                     <MaterialCommunityIcons
                                         name="video"
                                         size={24}
-                                        color="#FFFFFF"
+                                        color={
+                                            activeTab === 'video'
+                                                ? '#0A84FF'
+                                                : '#FFFFFF'
+                                        }
                                     />
-                                    <Text style={styles.toolButtonText}>
+                                    <Text
+                                        style={[
+                                            styles.toolButtonText,
+                                            activeTab === 'video' &&
+                                                styles.toolButtonTextActive,
+                                        ]}
+                                    >
                                         Video
                                     </Text>
-                                </View>
-                                <View style={styles.toolButton}>
+                                </Pressable>
+                                <Pressable
+                                    style={[
+                                        styles.toolButton,
+                                        activeTab === 'adjust' &&
+                                            styles.toolButtonActive,
+                                    ]}
+                                    onPress={() => setActiveTab('adjust')}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="tune"
+                                        size={24}
+                                        color={
+                                            activeTab === 'adjust'
+                                                ? '#0A84FF'
+                                                : '#FFFFFF'
+                                        }
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.toolButtonText,
+                                            activeTab === 'adjust' &&
+                                                styles.toolButtonTextActive,
+                                        ]}
+                                    >
+                                        Adjust
+                                    </Text>
+                                </Pressable>
+                                <Pressable
+                                    style={[
+                                        styles.toolButton,
+                                        activeTab === 'crop' &&
+                                            styles.toolButtonActive,
+                                    ]}
+                                    onPress={() => setActiveTab('crop')}
+                                >
                                     <MaterialCommunityIcons
                                         name="crop"
                                         size={24}
-                                        color="#FFFFFF"
+                                        color={
+                                            activeTab === 'crop'
+                                                ? '#0A84FF'
+                                                : '#FFFFFF'
+                                        }
                                     />
-                                    <Text style={styles.toolButtonText}>
+                                    <Text
+                                        style={[
+                                            styles.toolButtonText,
+                                            activeTab === 'crop' &&
+                                                styles.toolButtonTextActive,
+                                        ]}
+                                    >
                                         Crop
                                     </Text>
-                                </View>
+                                </Pressable>
                             </View>
                         </View>
                     )}
@@ -784,9 +861,30 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                             />
                         </View>
 
-                        {/* Scrubber */}
+                        {/* Scrubber - Only show for video tab */}
                         {isLandscape ? (
                             <View style={styles.scrubberContainerLandscape}>
+                                {activeTab === 'video' && (
+                                    <VideoScrubber
+                                        videoRef={videoRef}
+                                        duration={duration}
+                                        currentTime={currentTimeRef.current}
+                                        isPlaying={isPlaying}
+                                        thumbnails={thumbnails}
+                                        thumbnailsLoading={thumbnailsLoading}
+                                        onSeek={handleSeek}
+                                        onPlayPause={togglePlayback}
+                                        trimStart={trimStart}
+                                        trimEnd={trimEnd}
+                                        onTrimChange={handleTrimChange}
+                                        onTrimDragStart={handleTrimDragStart}
+                                        onTrimDragEnd={handleTrimDragEnd}
+                                        isTrimming={isTrimming}
+                                    />
+                                )}
+                            </View>
+                        ) : (
+                            activeTab === 'video' && (
                                 <VideoScrubber
                                     videoRef={videoRef}
                                     duration={duration}
@@ -803,24 +901,7 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                                     onTrimDragEnd={handleTrimDragEnd}
                                     isTrimming={isTrimming}
                                 />
-                            </View>
-                        ) : (
-                            <VideoScrubber
-                                videoRef={videoRef}
-                                duration={duration}
-                                currentTime={currentTimeRef.current}
-                                isPlaying={isPlaying}
-                                thumbnails={thumbnails}
-                                thumbnailsLoading={thumbnailsLoading}
-                                onSeek={handleSeek}
-                                onPlayPause={togglePlayback}
-                                trimStart={trimStart}
-                                trimEnd={trimEnd}
-                                onTrimChange={handleTrimChange}
-                                onTrimDragStart={handleTrimDragStart}
-                                onTrimDragEnd={handleTrimDragEnd}
-                                isTrimming={isTrimming}
-                            />
+                            )
                         )}
                     </View>
 
@@ -828,26 +909,87 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                     {!isLandscape && (
                         <View style={styles.controlsContainer}>
                             <View style={styles.toolbarContainer}>
-                                <View style={styles.toolButton}>
+                                <Pressable
+                                    style={[
+                                        styles.toolButton,
+                                        activeTab === 'video' &&
+                                            styles.toolButtonActive,
+                                    ]}
+                                    onPress={() => setActiveTab('video')}
+                                >
                                     <MaterialCommunityIcons
                                         name="video"
                                         size={24}
-                                        color="#FFFFFF"
+                                        color={
+                                            activeTab === 'video'
+                                                ? '#0A84FF'
+                                                : '#FFFFFF'
+                                        }
                                     />
-                                    <Text style={styles.toolButtonText}>
+                                    <Text
+                                        style={[
+                                            styles.toolButtonText,
+                                            activeTab === 'video' &&
+                                                styles.toolButtonTextActive,
+                                        ]}
+                                    >
                                         Video
                                     </Text>
-                                </View>
-                                <View style={styles.toolButton}>
+                                </Pressable>
+                                <Pressable
+                                    style={[
+                                        styles.toolButton,
+                                        activeTab === 'adjust' &&
+                                            styles.toolButtonActive,
+                                    ]}
+                                    onPress={() => setActiveTab('adjust')}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="tune"
+                                        size={24}
+                                        color={
+                                            activeTab === 'adjust'
+                                                ? '#0A84FF'
+                                                : '#FFFFFF'
+                                        }
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.toolButtonText,
+                                            activeTab === 'adjust' &&
+                                                styles.toolButtonTextActive,
+                                        ]}
+                                    >
+                                        Adjust
+                                    </Text>
+                                </Pressable>
+                                <Pressable
+                                    style={[
+                                        styles.toolButton,
+                                        activeTab === 'crop' &&
+                                            styles.toolButtonActive,
+                                    ]}
+                                    onPress={() => setActiveTab('crop')}
+                                >
                                     <MaterialCommunityIcons
                                         name="crop"
                                         size={24}
-                                        color="#FFFFFF"
+                                        color={
+                                            activeTab === 'crop'
+                                                ? '#0A84FF'
+                                                : '#FFFFFF'
+                                        }
                                     />
-                                    <Text style={styles.toolButtonText}>
+                                    <Text
+                                        style={[
+                                            styles.toolButtonText,
+                                            activeTab === 'crop' &&
+                                                styles.toolButtonTextActive,
+                                        ]}
+                                    >
                                         Crop
                                     </Text>
-                                </View>
+                                </Pressable>
                             </View>
                         </View>
                     )}
@@ -941,6 +1083,7 @@ const styles = StyleSheet.create({
         width: '100%',
         paddingHorizontal: 32,
         marginBottom: 20,
+        overflow: 'hidden',
     },
     controlsContainer: {
         paddingBottom: 20,
@@ -956,27 +1099,36 @@ const styles = StyleSheet.create({
     },
     toolbarContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 20,
-        paddingBottom: 40,
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingBottom: 32,
         backgroundColor: '#121212',
     },
     toolbarContainerLandscape: {
         flexDirection: 'column',
-        paddingVertical: 24,
-        gap: 32,
+        paddingVertical: 16,
         paddingHorizontal: 16,
         width: 80,
         alignItems: 'center',
     },
     toolButton: {
         alignItems: 'center',
-        justifyContent: 'center', // Ensure icon and text are centered
+        justifyContent: 'center',
+        marginHorizontal: 20,
+        marginVertical: 12,
+    },
+    toolButtonActive: {
+        opacity: 1,
     },
     toolButtonText: {
         color: '#FFFFFF',
         fontSize: 12,
         marginTop: 4,
+        opacity: 0.8,
+    },
+    toolButtonTextActive: {
+        color: '#0A84FF',
+        opacity: 1,
     },
     loadingText: {
         color: '#FFFFFF',
