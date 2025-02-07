@@ -72,6 +72,10 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     const [duration, setDuration] = React.useState(0)
     const [trimStart, setTrimStart] = React.useState(0)
     const [trimEnd, setTrimEnd] = React.useState(0)
+    const [originalTrimStart, setOriginalTrimStart] = React.useState(0)
+    const [originalTrimEnd, setOriginalTrimEnd] = React.useState(0)
+    const [hasChanges, setHasChanges] = React.useState(false)
+    const trimChangeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const [thumbnailsLoading, setThumbnailsLoading] = React.useState(false)
     const [thumbnails, setThumbnails] = React.useState<string[]>([])
     const [timelineWidth] = React.useState(0)
@@ -307,6 +311,8 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                 setDuration(data.duration)
                 setTrimStart(0)
                 setTrimEnd(data.duration)
+                setOriginalTrimStart(0)
+                setOriginalTrimEnd(data.duration)
             } catch (err) {
                 console.error('❌ Error fetching video:', err)
                 setError(
@@ -421,7 +427,9 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                 hasTimelineWidth: timelineWidth > 0,
             })
             setDuration(videoDuration)
-            setTrimEnd(videoDuration) // Initialize trimEnd to full duration
+            setTrimEnd(videoDuration)
+            setOriginalTrimStart(0)
+            setOriginalTrimEnd(videoDuration)
 
             // Set initial playhead position
             if (timelineWidth > 0) {
@@ -457,6 +465,19 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                 setTrimStart(validStart)
                 setTrimEnd(validEnd)
 
+                // Clear any existing timeout
+                if (trimChangeTimeoutRef.current) {
+                    clearTimeout(trimChangeTimeoutRef.current)
+                }
+
+                // Set a new timeout to check if the trim points are close to original
+                trimChangeTimeoutRef.current = setTimeout(() => {
+                    const isCloseToOriginal =
+                        Math.abs(validStart - originalTrimStart) < 0.1 &&
+                        Math.abs(validEnd - originalTrimEnd) < 0.1
+                    setHasChanges(!isCloseToOriginal)
+                }, 100)
+
                 // Check if the current playhead position is before the new trim start
                 if (currentTimeRef.current < validStart) {
                     // Update the playhead position to the new trim start
@@ -484,7 +505,15 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                 }
             }
         },
-        [duration, trimStart, trimEnd, updateVideoPosition, updateCurrentTime],
+        [
+            duration,
+            trimStart,
+            trimEnd,
+            originalTrimStart,
+            originalTrimEnd,
+            updateVideoPosition,
+            updateCurrentTime,
+        ],
     )
 
     // Handle trim drag state
@@ -662,23 +691,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
 
                                     const newStoragePath = `${videoId}/trimmed.mp4`
 
-                                    // First update the video metadata in database
-                                    const { error: updateError } =
-                                        await supabase
-                                            .from('videos')
-                                            .update({
-                                                storage_path: newStoragePath,
-                                                duration: trimEnd - trimStart,
-                                                trim_start: trimStart,
-                                                trim_end: trimEnd,
-                                                updated_at:
-                                                    new Date().toISOString(),
-                                            })
-                                            .eq('id', videoId)
-
-                                    if (updateError) throw updateError
-
-                                    // Now upload the binary data
+                                    // Upload the binary data
                                     const { error: uploadError } =
                                         await supabase.storage
                                             .from('videos')
@@ -723,6 +736,22 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                         size: uploadedFile.metadata?.size || 0,
                                     })
 
+                                    // Update video metadata in database
+                                    const { error: updateError } =
+                                        await supabase
+                                            .from('videos')
+                                            .update({
+                                                storage_path: newStoragePath,
+                                                duration: trimEnd - trimStart,
+                                                trim_start: trimStart,
+                                                trim_end: trimEnd,
+                                                updated_at:
+                                                    new Date().toISOString(),
+                                            })
+                                            .eq('id', videoId)
+
+                                    if (updateError) throw updateError
+
                                     // Clean up temporary files
                                     await FileSystem.deleteAsync(tempDir, {
                                         idempotent: true,
@@ -744,8 +773,21 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                 router.back()
                             }
                         }}
+                        disabled={!hasChanges}
+                        style={({ pressed }) => [
+                            styles.saveButton,
+                            !hasChanges && styles.saveButtonDisabled,
+                            pressed && styles.saveButtonPressed,
+                        ]}
                     >
-                        <Text style={styles.navButton}>Save</Text>
+                        <Text
+                            style={[
+                                styles.navButton,
+                                !hasChanges && styles.navButtonDisabled,
+                            ]}
+                        >
+                            Save
+                        </Text>
                     </Pressable>
                 </View>
 
@@ -1393,5 +1435,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
+    },
+    saveButton: {
+        opacity: 1,
+        padding: 8,
+        borderRadius: 8,
+    },
+    saveButtonDisabled: {
+        opacity: 0.5,
+    },
+    saveButtonPressed: {
+        opacity: 0.8,
+    },
+    navButtonDisabled: {
+        color: '#999999',
     },
 })
