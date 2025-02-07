@@ -119,12 +119,7 @@ export function VideoDetailsView({ videoId, onClose }: VideoDetailsViewProps) {
     }
 
     if (isEditing && video) {
-        return (
-            <VideoEditView
-                videoId={video.id}
-                onClose={() => setIsEditing(false)}
-            />
-        )
+        return <VideoEditView videoId={video.id} />
     }
 
     return (

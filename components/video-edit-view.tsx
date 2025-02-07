@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ResizeMode, Video } from 'expo-av'
 import * as FileSystem from 'expo-file-system'
+import { useRouter } from 'expo-router'
 import * as VideoThumbnails from 'expo-video-thumbnails'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
@@ -28,7 +29,6 @@ import type { AVPlaybackStatus } from 'expo-av'
 
 interface VideoEditViewProps {
     videoId: string
-    onClose: () => void
 }
 
 // Throttle helper function
@@ -46,7 +46,8 @@ function throttle<T extends (...args: any[]) => any>(
     }
 }
 
-export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
+export function VideoEditView({ videoId }: VideoEditViewProps) {
+    const router = useRouter()
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [video, setVideo] = React.useState<VideoMetadata | null>(null)
@@ -489,6 +490,11 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
         console.error('🚨 Video loading error:', error)
     }
 
+    // Replace onClose with router.back()
+    const handleBack = () => {
+        router.back()
+    }
+
     if (loading || !video || !videoUrl) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -508,8 +514,8 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <View style={styles.container}>
                     <Text style={styles.errorText}>{error}</Text>
-                    <Pressable onPress={onClose} style={styles.button}>
-                        <Text style={styles.buttonText}>Close</Text>
+                    <Pressable onPress={handleBack} style={styles.button}>
+                        <Text style={styles.buttonText}>Back</Text>
                     </Pressable>
                 </View>
             </SafeAreaView>
@@ -535,10 +541,10 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                         isLandscape && styles.navBarLandscape,
                     ]}
                 >
-                    <Pressable onPress={onClose}>
-                        <Text style={styles.navButton}>Cancel</Text>
+                    <Pressable onPress={handleBack}>
+                        <Text style={styles.navButton}>Back</Text>
                     </Pressable>
-                    <Text style={styles.navTitle}>Video</Text>
+                    <Text style={styles.navTitle}>Edit Video</Text>
                     <Pressable
                         onPress={async () => {
                             try {
@@ -699,11 +705,11 @@ export function VideoEditView({ videoId, onClose }: VideoEditViewProps) {
                                 )
                             } finally {
                                 setLoading(false)
-                                onClose()
+                                router.back()
                             }
                         }}
                     >
-                        <Text style={styles.navButton}>Done</Text>
+                        <Text style={styles.navButton}>Save</Text>
                     </Pressable>
                 </View>
 
@@ -1004,9 +1010,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 32,
+        paddingHorizontal: 16,
         backgroundColor: '#121212',
         marginTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#333333',
     },
     navBarLandscape: {
         marginTop: 0,

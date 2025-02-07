@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 
 import { VideoEditView } from '@/components/video-edit-view'
 
-export default function VideoEditorModal() {
+export default function VideoEditor() {
     const { videoId } = useLocalSearchParams<{ videoId: string }>()
     const router = useRouter()
 
@@ -11,5 +11,5 @@ export default function VideoEditorModal() {
         return null
     }
 
-    return <VideoEditView videoId={videoId} onClose={() => router.back()} />
+    return <VideoEditView videoId={videoId} />
 }

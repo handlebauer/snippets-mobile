@@ -14,12 +14,11 @@ export default function ProtectedLayout() {
                 <Stack.Screen
                     name="video-editor/[id]"
                     options={{
-                        animation: 'slide_from_bottom',
+                        animation: 'slide_from_right',
                         headerShown: false,
-                        presentation: 'modal',
+                        presentation: 'card',
                         orientation: 'all',
                         gestureEnabled: true,
-                        fullScreenGestureEnabled: true,
                     }}
                 />
             </Stack>
