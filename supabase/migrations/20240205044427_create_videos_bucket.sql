@@ -13,27 +13,21 @@ create policy "Users can upload videos"
     on storage.objects for insert
     with check (
         bucket_id = 'videos' and
-        auth.role() = 'authenticated'
+        auth.role() = 'authenticated' and
+        -- Allow uploads to directories owned by the user
+        (split_part(name, '/', 1))::uuid in (
+            select id from videos where profile_id = auth.uid()
+        )
     );
 
-create policy "Users can update their own videos"
+create policy "Users can update their videos"
     on storage.objects for update
     using (
         bucket_id = 'videos' and
-        auth.uid() = (
-            select profile_id
-            from videos
-            where storage_path = name
-            limit 1
-        )
-    )
-    with check (
-        bucket_id = 'videos' and
-        auth.uid() = (
-            select profile_id
-            from videos
-            where storage_path = name
-            limit 1
+        auth.role() = 'authenticated' and
+        -- Allow updates to directories owned by the user
+        (split_part(name, '/', 1))::uuid in (
+            select id from videos where profile_id = auth.uid()
         )
     );
 
@@ -41,10 +35,9 @@ create policy "Users can delete their own videos"
     on storage.objects for delete
     using (
         bucket_id = 'videos' and
-        auth.uid() = (
-            select profile_id
-            from videos
-            where storage_path = name
-            limit 1
+        auth.role() = 'authenticated' and
+        -- Allow deletes in directories owned by the user
+        (split_part(name, '/', 1))::uuid in (
+            select id from videos where profile_id = auth.uid()
         )
     ); 
