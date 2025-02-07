@@ -283,7 +283,12 @@ export function ScreenShareViewer({
                         styles.exitButton,
                         isLandscape && styles.exitButtonLandscape,
                     ]}
-                    onPress={onReset}
+                    onPress={() => {
+                        // First stop any ongoing recording
+                        handleRecordPress(false)
+                        // Then reset the session
+                        onReset()
+                    }}
                 >
                     <MaterialCommunityIcons
                         name="chevron-left"
