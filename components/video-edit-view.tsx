@@ -1,6 +1,7 @@
 import { Buffer } from 'buffer'
 import React from 'react'
 import {
+    ActivityIndicator,
     Animated,
     Modal,
     Platform,
@@ -516,20 +517,6 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
         router.back()
     }
 
-    if (loading || !video || !videoUrl) {
-        return (
-            <SafeAreaView style={styles.safeArea} edges={['top']}>
-                <View style={styles.container}>
-                    <Text style={styles.loadingText}>
-                        {loading && video
-                            ? 'Trimming video...'
-                            : 'Loading video...'}
-                    </Text>
-                </View>
-            </SafeAreaView>
-        )
-    }
-
     if (error) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -543,6 +530,16 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
         )
     }
 
+    if (!video || !videoUrl) {
+        return (
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
+                <View style={styles.container}>
+                    <Text style={styles.loadingText}>Loading video...</Text>
+                </View>
+            </SafeAreaView>
+        )
+    }
+
     return (
         <View style={styles.root}>
             <StatusBar
@@ -551,6 +548,11 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                 barStyle="light-content"
                 hidden={isLandscape}
             />
+            {loading && (
+                <View style={styles.loadingOverlay}>
+                    <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
+            )}
             <SafeAreaView
                 style={styles.safeArea}
                 edges={isLandscape ? ['left', 'right'] : ['top']}
@@ -597,7 +599,8 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                 // -ss: start time in seconds
                                 // -t: duration in seconds
                                 // -c copy: copy streams without re-encoding (fast)
-                                const command = `-ss ${trimStart} -t ${trimEnd - trimStart} -i ${videoUrl} -c copy ${outputPath}`
+                                // -y: automatically overwrite output file
+                                const command = `-y -ss ${trimStart} -t ${trimEnd - trimStart} -i ${videoUrl} -c copy ${outputPath}`
 
                                 console.log('Starting video trim:', {
                                     command,
@@ -659,7 +662,23 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
 
                                     const newStoragePath = `${videoId}/trimmed.mp4`
 
-                                    // Upload the binary data
+                                    // First update the video metadata in database
+                                    const { error: updateError } =
+                                        await supabase
+                                            .from('videos')
+                                            .update({
+                                                storage_path: newStoragePath,
+                                                duration: trimEnd - trimStart,
+                                                trim_start: trimStart,
+                                                trim_end: trimEnd,
+                                                updated_at:
+                                                    new Date().toISOString(),
+                                            })
+                                            .eq('id', videoId)
+
+                                    if (updateError) throw updateError
+
+                                    // Now upload the binary data
                                     const { error: uploadError } =
                                         await supabase.storage
                                             .from('videos')
@@ -703,22 +722,6 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                         name: uploadedFile.name,
                                         size: uploadedFile.metadata?.size || 0,
                                     })
-
-                                    // Update video metadata in database
-                                    const { error: updateError } =
-                                        await supabase
-                                            .from('videos')
-                                            .update({
-                                                storage_path: newStoragePath,
-                                                duration: trimEnd - trimStart,
-                                                trim_start: trimStart,
-                                                trim_end: trimEnd,
-                                                updated_at:
-                                                    new Date().toISOString(),
-                                            })
-                                            .eq('id', videoId)
-
-                                    if (updateError) throw updateError
 
                                     // Clean up temporary files
                                     await FileSystem.deleteAsync(tempDir, {
@@ -1379,5 +1382,16 @@ const styles = StyleSheet.create({
         color: '#0A84FF',
         fontSize: 17,
         fontWeight: '400',
+    },
+    loadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
     },
 })
