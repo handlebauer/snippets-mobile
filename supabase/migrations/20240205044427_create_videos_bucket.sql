@@ -26,6 +26,15 @@ create policy "Users can update their own videos"
             where storage_path = name
             limit 1
         )
+    )
+    with check (
+        bucket_id = 'videos' and
+        auth.uid() = (
+            select profile_id
+            from videos
+            where storage_path = name
+            limit 1
+        )
     );
 
 create policy "Users can delete their own videos"
