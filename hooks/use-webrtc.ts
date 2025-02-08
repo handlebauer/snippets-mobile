@@ -27,7 +27,7 @@ interface WebRTCState {
     sessionCode: string | null
     error: string | null
     streamURL: string | null
-    statusMessage?: string
+    statusMessage: string | null
     videoProcessing?: VideoProcessingSignal
 }
 
@@ -38,6 +38,7 @@ export const useWebRTC = () => {
         sessionCode: null,
         error: null,
         streamURL: null,
+        statusMessage: null,
     })
 
     const peerConnection = useRef<RTCPeerConnection | null>(null)
@@ -91,7 +92,7 @@ export const useWebRTC = () => {
                         setState(prev => ({
                             ...prev,
                             streamURL: url,
-                            statusMessage: undefined,
+                            statusMessage: null,
                         })),
                 )
             } catch (error) {
@@ -127,7 +128,7 @@ export const useWebRTC = () => {
             streamURL: null,
             error: null,
             sessionCode: null,
-            statusMessage: undefined,
+            statusMessage: null,
             videoProcessing: undefined,
         }))
     }, [supabase])
