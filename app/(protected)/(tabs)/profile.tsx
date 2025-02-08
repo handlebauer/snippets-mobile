@@ -3,7 +3,6 @@ import {
     Alert,
     Image,
     Keyboard,
-    Linking,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -13,14 +12,14 @@ import {
 import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import Constants from 'expo-constants'
-import { router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import { useSupabase } from '@/contexts/supabase.context'
 import { Session } from '@supabase/supabase-js'
 
 import { supabase } from '@/lib/supabase.client'
+import { useGitHubConnection } from '@/hooks/use-github-connection'
 
 interface ProfileData {
     username: string
@@ -282,7 +281,9 @@ export default function ProfileScreen() {
         null,
     )
     const [tempValue, setTempValue] = useState('')
-    const [, setIsConnectingGitHub] = useState(false)
+    const { isConnected, connectGitHub, disconnectGitHub } =
+        useGitHubConnection()
+    const { signOut } = useSupabase()
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -347,91 +348,21 @@ export default function ProfileScreen() {
         Keyboard.dismiss()
     }
 
+    console.log('session', session)
+
     const handleSignOut = async () => {
         try {
-            await supabase.auth.signOut()
-            router.replace('/(auth)')
+            await signOut()
+            // Navigation is now handled by the protected layout
         } catch (error) {
             console.error('Error signing out:', error)
+            Alert.alert('Error', 'Failed to sign out. Please try again.')
         }
     }
 
-    const handleConnectGitHub = async () => {
-        if (!session?.user.id) return
-
-        try {
-            setIsConnectingGitHub(true)
-
-            // GitHub OAuth configuration
-            const githubConfig = {
-                clientId: Constants.expoConfig?.extra
-                    ?.githubOAuthClientId as string,
-            }
-
-            if (!githubConfig.clientId) {
-                throw new Error('GitHub OAuth configuration is missing')
-            }
-
-            // Construct the GitHub OAuth URL with necessary scopes
-            const authUrl =
-                `https://github.com/login/oauth/authorize?` +
-                `client_id=${encodeURIComponent(githubConfig.clientId)}` +
-                `&redirect_uri=${encodeURIComponent('snippets://auth/callback')}` +
-                `&state=${encodeURIComponent(session.user.id)}` +
-                `&scope=${encodeURIComponent('repo read:user user:email')}`
-
-            // Open GitHub OAuth page
-            await Linking.openURL(authUrl)
-        } catch (error) {
-            console.error('Error connecting to GitHub:', error)
-            Alert.alert(
-                'GitHub Connection Failed',
-                error instanceof Error
-                    ? error.message
-                    : 'Failed to connect to GitHub',
-            )
-        } finally {
-            setIsConnectingGitHub(false)
-        }
+    const handleConnectGitHub = () => {
+        connectGitHub('/(protected)/(tabs)/profile')
     }
-
-    const handleDisconnectGitHub = async () => {
-        if (!session?.user.id) return
-
-        try {
-            // Update the profile to remove GitHub connection
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    github_connected: false,
-                    github_username: null,
-                    github_access_token: null,
-                    github_token_expires_at: null,
-                })
-                .eq('id', session.user.id)
-
-            if (error) throw error
-
-            // Update local state
-            setProfileData(prev => ({
-                ...prev,
-                github_connected: false,
-                github_username: undefined,
-                github_access_token: undefined,
-                github_token_expires_at: undefined,
-            }))
-        } catch (error) {
-            console.error('Error disconnecting from GitHub:', error)
-            Alert.alert(
-                'GitHub Disconnection Failed',
-                error instanceof Error
-                    ? error.message
-                    : 'Failed to disconnect from GitHub',
-            )
-        }
-    }
-
-    if (!session) return null
 
     const hasChanges = editingField
         ? tempValue !== profileData[editingField]
@@ -470,7 +401,7 @@ export default function ProfileScreen() {
                         <View style={styles.divider} />
                         <ProfileField
                             label="Email"
-                            value={session.user.email || 'No email'}
+                            value={session?.user?.email || 'No email'}
                             readOnly
                         />
                         <View style={styles.divider} />
@@ -490,10 +421,10 @@ export default function ProfileScreen() {
                 </ProfileSection>
 
                 <GitHubConnectionSection
-                    isConnected={profileData.github_connected || false}
+                    isConnected={isConnected}
                     username={profileData.github_username}
                     onConnect={handleConnectGitHub}
-                    onDisconnect={handleDisconnectGitHub}
+                    onDisconnect={disconnectGitHub}
                 />
 
                 <Pressable

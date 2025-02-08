@@ -1,14 +1,18 @@
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
 
 import Constants from 'expo-constants'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 
 import { supabase } from '@/lib/supabase.client'
 
+interface GitHubState {
+    userId: string
+    returnPath: string
+}
+
 export default function GitHubCallback() {
-    const router = useRouter()
     const params = useLocalSearchParams()
 
     useEffect(() => {
@@ -21,11 +25,16 @@ export default function GitHubCallback() {
                     throw new Error('Missing code or state')
                 }
 
+                // Parse state parameter
+                const parsedState = JSON.parse(
+                    decodeURIComponent(state as string),
+                ) as GitHubState
+
                 // Verify state matches the user ID we sent
                 const {
                     data: { session },
                 } = await supabase.auth.getSession()
-                if (!session || state !== session.user.id) {
+                if (!session || parsedState.userId !== session.user.id) {
                     throw new Error('Invalid state parameter')
                 }
 
@@ -93,8 +102,9 @@ export default function GitHubCallback() {
 
                 if (updateError) throw updateError
 
-                // Navigate back to profile
-                router.replace('/(protected)/(tabs)/profile')
+                // Navigate back to the originating tab
+                // @ts-expect-error - router.replace is typed by expo router and does not accept our custom returnPath
+                router.replace(parsedState.returnPath)
             } catch (error) {
                 console.error('Error handling GitHub callback:', error)
                 // Navigate back to profile with error
@@ -103,7 +113,7 @@ export default function GitHubCallback() {
         }
 
         handleCallback()
-    }, [params, router])
+    }, [params])
 
     return (
         <View style={styles.container}>
@@ -116,13 +126,13 @@ export default function GitHubCallback() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
         backgroundColor: '#121212',
+        alignItems: 'center',
+        justifyContent: 'center',
         gap: 16,
     },
     text: {
         color: '#FFFFFF',
-        fontSize: 17,
+        fontSize: 16,
     },
 })
