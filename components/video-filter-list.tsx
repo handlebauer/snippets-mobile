@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
         padding: 32,
     },
     emptyRepoText: {
-        color: '#FFFFFF',
+        color: '#8E8E93',
         fontSize: 17,
         fontWeight: '600',
         marginTop: 16,

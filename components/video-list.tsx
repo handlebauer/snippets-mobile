@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     handle: {
         width: 36,
         height: 5,
-        backgroundColor: '#3A3A3C',
+        backgroundColor: '#808080',
         borderRadius: 2.5,
         marginTop: 8,
         marginBottom: 20,
