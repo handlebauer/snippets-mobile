@@ -4,6 +4,7 @@ Expo:
 
 - Use `./app.config.js` for Expo configuration (NOT `./app.json`).
 - The `scheme` is `snippets`.
+- Use `@contexts/supabase.context.ts` for anything authentication related.
 
 Code Style and Structure:
 
