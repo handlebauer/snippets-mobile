@@ -359,18 +359,34 @@ export function ScreenShareViewer({
                             </Text>
                             {effectiveState.statusMessage && (
                                 <View style={styles.statusContainer}>
-                                    <Animated.View
-                                        style={{
-                                            transform: [{ rotate: spin }],
-                                        }}
-                                    >
+                                    {effectiveState.statusMessage ===
+                                    'Web client connected' ? (
                                         <MaterialCommunityIcons
-                                            name="loading"
+                                            name="check-circle"
                                             size={14}
-                                            color="#CCCCCC"
+                                            color="#22C55E"
                                         />
-                                    </Animated.View>
-                                    <Text style={styles.statusText}>
+                                    ) : (
+                                        <Animated.View
+                                            style={{
+                                                transform: [{ rotate: spin }],
+                                            }}
+                                        >
+                                            <MaterialCommunityIcons
+                                                name="loading"
+                                                size={14}
+                                                color="#CCCCCC"
+                                            />
+                                        </Animated.View>
+                                    )}
+                                    <Text
+                                        style={[
+                                            styles.statusText,
+                                            effectiveState.statusMessage ===
+                                                'Web client connected' &&
+                                                styles.statusTextSuccess,
+                                        ]}
+                                    >
                                         {effectiveState.statusMessage}
                                     </Text>
                                 </View>
@@ -487,6 +503,10 @@ const styles = StyleSheet.create({
     statusText: {
         color: '#CCCCCC',
         fontSize: 14,
+    },
+    statusTextSuccess: {
+        color: '#CCCCCC',
+        opacity: 1,
     },
     urlContainer: {
         flexDirection: 'row',

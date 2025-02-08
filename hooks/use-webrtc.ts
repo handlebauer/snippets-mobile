@@ -3,6 +3,7 @@ import { RTCIceCandidate, RTCPeerConnection } from 'react-native-webrtc'
 
 import { useSupabase } from '@/contexts/supabase.context'
 
+import { useSessionCreator } from '@/hooks/use-session-creator'
 import { cleanupChannel, setupChannel } from '@/hooks/webrtc/channel'
 import {
     createPeerConnection,
@@ -33,6 +34,7 @@ interface WebRTCState {
 
 export const useWebRTC = () => {
     const { supabase } = useSupabase()
+    const { createSession } = useSessionCreator()
     const [state, setState] = useState<WebRTCState>({
         isPairing: false,
         sessionCode: null,
@@ -83,6 +85,26 @@ export const useWebRTC = () => {
                     handleVideoProcessing,
                 )
 
+                // Listen for web client presence
+                channel.current.on('presence', { event: 'sync' }, () => {
+                    const state = channel.current?.presenceState() || {}
+                    console.log('👥 Presence state updated:', state)
+
+                    // Check if web client is present
+                    const hasWebClient = Object.values(state).some(
+                        (presences: any) =>
+                            presences.some((p: any) => p.client_type === 'web'),
+                    )
+
+                    if (hasWebClient) {
+                        console.log('🌐 Web client detected')
+                        setState(prev => ({
+                            ...prev,
+                            statusMessage: 'Web client connected',
+                        }))
+                    }
+                })
+
                 // Setup WebRTC handlers and ICE candidates
                 await setupPeerConnection(
                     peerConnection.current,
@@ -95,6 +117,11 @@ export const useWebRTC = () => {
                             statusMessage: null,
                         })),
                 )
+
+                // Create a new recording session in the database using the same pairing code
+                if (!(await createSession(code))) {
+                    throw new Error('Failed to create recording session')
+                }
             } catch (error) {
                 console.error('Error pairing device:', error)
                 setState(prev => ({
@@ -108,7 +135,7 @@ export const useWebRTC = () => {
                 }))
             }
         },
-        [supabase, handleVideoProcessing],
+        [supabase, handleVideoProcessing, createSession],
     )
 
     const cleanup = useCallback(() => {

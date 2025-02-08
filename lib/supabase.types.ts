@@ -165,7 +165,14 @@ export type Database = {
         Functions: {
             get_github_repos_for_session: {
                 Args: {
-                    session_code: string
+                    pairing_code: string
+                }
+                Returns: Json
+            }
+            update_session_repository: {
+                Args: {
+                    pairing_code: string
+                    repository_name: string
                 }
                 Returns: Json
             }
