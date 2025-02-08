@@ -1,5 +1,5 @@
 import React from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Animated, StyleSheet, View } from 'react-native'
 import { ActivityIndicator, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -18,6 +18,9 @@ export function PostRecordingView({
     onClose,
 }: PostRecordingViewProps) {
     const router = useRouter()
+    const [showSuccess, setShowSuccess] = React.useState(false)
+    const fadeAnim = React.useRef(new Animated.Value(0)).current
+    const scaleAnim = React.useRef(new Animated.Value(0.9)).current
 
     // Log when component mounts or updates
     React.useEffect(() => {
@@ -41,17 +44,44 @@ export function PostRecordingView({
         })
     }, [videoProcessing.status])
 
-    // If processing is complete and we have a video ID, navigate to editor
+    // If processing is complete and we have a video ID, show success and navigate to editor
     React.useEffect(() => {
         if (videoProcessing.status === 'completed' && videoProcessing.videoId) {
             console.log(
-                '🎯 Processing complete, navigating to editor:',
+                '🎯 Processing complete, showing success state before navigation:',
                 videoProcessing.videoId,
             )
-            router.push(`/video-editor/${videoProcessing.videoId}`)
-            onClose()
+            setShowSuccess(true)
+
+            // Animate the success state
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(scaleAnim, {
+                    toValue: 1,
+                    friction: 8,
+                    tension: 40,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+
+            // Wait a brief moment to show the success state before navigating
+            const timer = setTimeout(() => {
+                router.push(`/video-editor/${videoProcessing.videoId}`)
+            }, 1000)
+
+            return () => clearTimeout(timer)
         }
-    }, [videoProcessing.status, videoProcessing.videoId, router, onClose])
+    }, [
+        videoProcessing.status,
+        videoProcessing.videoId,
+        router,
+        fadeAnim,
+        scaleAnim,
+    ])
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -101,6 +131,33 @@ export function PostRecordingView({
                                         'An error occurred while processing your video.'}
                                 </Text>
                             </>
+                        ) : showSuccess ? (
+                            <Animated.View
+                                style={{
+                                    opacity: fadeAnim,
+                                    transform: [{ scale: scaleAnim }],
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <MaterialCommunityIcons
+                                    name="check-circle"
+                                    size={48}
+                                    color="#34C759"
+                                    style={styles.icon}
+                                />
+                                <Text
+                                    variant="titleLarge"
+                                    style={styles.subtitle}
+                                >
+                                    Processing Complete
+                                </Text>
+                                <Text
+                                    variant="bodyLarge"
+                                    style={styles.description}
+                                >
+                                    Your video is ready to edit
+                                </Text>
+                            </Animated.View>
                         ) : null}
                     </View>
                 </View>
