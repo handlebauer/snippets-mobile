@@ -6,6 +6,7 @@ import {
     Modal,
     Platform,
     Pressable,
+    Share,
     StatusBar,
     StyleSheet,
     View,
@@ -547,6 +548,27 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
         router.back()
     }
 
+    // Add share handler
+    const handleShare = React.useCallback(async () => {
+        if (!videoUrl) return
+
+        try {
+            const result = await Share.share({
+                url: videoUrl,
+                title: 'Share Recording',
+                message: video?.linked_repo
+                    ? `Check out my coding recording for ${video.linked_repo}`
+                    : 'Check out my coding recording',
+            })
+
+            if (result.action === Share.sharedAction) {
+                console.log('Shared successfully')
+            }
+        } catch (error) {
+            console.error('Error sharing:', error)
+        }
+    }, [videoUrl, video?.linked_repo])
+
     if (error) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -1009,6 +1031,23 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                         Crop
                                     </Text>
                                 </Pressable>
+                                <Pressable
+                                    style={styles.toolButton}
+                                    onPress={handleShare}
+                                >
+                                    <MaterialCommunityIcons
+                                        name={
+                                            Platform.OS === 'ios'
+                                                ? 'export-variant'
+                                                : 'share-variant'
+                                        }
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={styles.toolButtonText}>
+                                        Share
+                                    </Text>
+                                </Pressable>
                             </View>
                         </View>
                     )}
@@ -1178,6 +1217,23 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                         Crop
                                     </Text>
                                 </Pressable>
+                                <Pressable
+                                    style={styles.toolButton}
+                                    onPress={handleShare}
+                                >
+                                    <MaterialCommunityIcons
+                                        name={
+                                            Platform.OS === 'ios'
+                                                ? 'export-variant'
+                                                : 'share-variant'
+                                        }
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={styles.toolButtonText}>
+                                        Share
+                                    </Text>
+                                </Pressable>
                             </View>
                         </View>
                     )}
@@ -1238,6 +1294,7 @@ const styles = StyleSheet.create({
     mainContainer: {
         flex: 1,
         flexDirection: 'column',
+        justifyContent: 'space-between',
     },
     mainContainerLandscape: {
         flex: 1,
@@ -1253,6 +1310,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#121212',
         overflow: 'hidden',
         width: '100%',
+        marginBottom: 8,
     },
     videoContainerLandscape: {
         flex: 1,
@@ -1274,7 +1332,7 @@ const styles = StyleSheet.create({
         minHeight: 100,
     },
     controlsContainer: {
-        paddingBottom: 20,
+        paddingBottom: 8,
     },
     controlsContainerLandscape: {
         width: 100,
@@ -1287,8 +1345,8 @@ const styles = StyleSheet.create({
     toolbarContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        paddingVertical: 12,
-        paddingBottom: 32,
+        paddingVertical: 8,
+        paddingBottom: 16,
         backgroundColor: '#121212',
     },
     toolbarContainerLandscape: {
@@ -1303,7 +1361,7 @@ const styles = StyleSheet.create({
     toolButton: {
         alignItems: 'center',
         justifyContent: 'center',
-        marginHorizontal: 20,
+        marginHorizontal: 12,
         marginVertical: 12,
         width: 60,
     },
