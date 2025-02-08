@@ -3,6 +3,7 @@ import React from 'react'
 import {
     ActivityIndicator,
     Animated,
+    FlatList,
     Modal,
     Platform,
     Pressable,
@@ -34,6 +35,13 @@ import type { AVPlaybackStatus } from 'expo-av'
 
 interface VideoEditViewProps {
     videoId: string
+}
+
+interface Bookmark {
+    id: string
+    timestamp: number
+    label?: string
+    createdAt: string
 }
 
 function formatFileSize(bytes: number): string {
@@ -98,6 +106,8 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     >('video')
     const mainContainerRef = React.useRef<View>(null)
     const [showMetadataModal, setShowMetadataModal] = React.useState(false)
+    const [bookmarks, setBookmarks] = React.useState<Bookmark[]>([])
+    const [showBookmarksModal, setShowBookmarksModal] = React.useState(false)
 
     // Update both ref and state when setting time
     const updateCurrentTime = React.useCallback((time: number) => {
@@ -569,6 +579,68 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
         }
     }, [videoUrl, video?.linked_repo])
 
+    // Format timestamp as MM:SS.s
+    const formatTimestamp = (seconds: number) => {
+        const minutes = Math.floor(seconds / 60)
+        const remainingSeconds = (seconds % 60).toFixed(1) // Keep one decimal place
+        // Ensure we always show two digits before decimal point
+        const formattedSeconds = remainingSeconds.padStart(4, '0')
+        return `${minutes}:${formattedSeconds}`
+    }
+
+    // Add bookmark at current timestamp
+    const addBookmark = async () => {
+        if (!videoRef.current) return
+
+        try {
+            const status = await videoRef.current.getStatusAsync()
+            if (!status.isLoaded) return
+
+            const timestamp = status.positionMillis / 1000
+
+            // Check if bookmark already exists at this timestamp (using smaller threshold)
+            if (bookmarks.some(b => Math.abs(b.timestamp - timestamp) < 0.1)) {
+                return // Prevent duplicates within 0.1s instead of 0.5s
+            }
+
+            const newBookmark: Bookmark = {
+                id: Math.random().toString(36).substr(2, 9),
+                timestamp,
+                createdAt: new Date().toISOString(),
+            }
+
+            setBookmarks(prev =>
+                [...prev, newBookmark].sort(
+                    (a, b) => a.timestamp - b.timestamp,
+                ),
+            )
+        } catch (err) {
+            console.error('Failed to add bookmark:', err)
+        }
+    }
+
+    // Seek to bookmark timestamp
+    const seekToBookmark = (timestamp: number) => {
+        if (!videoRef.current) return
+
+        // Update current time and seek
+        updateCurrentTime(timestamp)
+        updateVideoPosition(timestamp)
+
+        // Update visual playhead
+        if (timelineLayout.current.width > 0) {
+            const position =
+                (timestamp / duration) * timelineLayout.current.width
+            playheadAnim.setValue(position)
+        }
+        setShowBookmarksModal(false) // Close modal after seeking
+    }
+
+    // Delete bookmark
+    const deleteBookmark = (id: string) => {
+        setBookmarks(prev => prev.filter(b => b.id !== id))
+    }
+
     if (error) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -929,6 +1001,118 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                     </Pressable>
                 </Modal>
 
+                {/* Bookmarks Modal */}
+                <Modal
+                    visible={showBookmarksModal}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setShowBookmarksModal(false)}
+                    statusBarTranslucent={true}
+                >
+                    <Pressable
+                        style={styles.modalOverlay}
+                        onPress={() => setShowBookmarksModal(false)}
+                    >
+                        <View style={styles.modalWrapper}>
+                            <BlurView
+                                intensity={90}
+                                style={styles.modalBlur}
+                                tint="dark"
+                            >
+                                <View style={styles.modalContent}>
+                                    <View style={styles.modalHandle} />
+                                    <View style={styles.modalHeader}>
+                                        <Text style={styles.modalTitle}>
+                                            Bookmarks
+                                        </Text>
+                                        <Pressable
+                                            style={styles.addButton}
+                                            onPress={addBookmark}
+                                        >
+                                            <Text style={styles.addButtonText}>
+                                                Add
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+                                    <FlatList
+                                        data={bookmarks}
+                                        keyExtractor={item => item.id}
+                                        style={styles.bookmarkList}
+                                        contentContainerStyle={
+                                            styles.bookmarkListContent
+                                        }
+                                        ListEmptyComponent={
+                                            <View
+                                                style={styles.emptyBookmarkList}
+                                            >
+                                                <Text
+                                                    style={
+                                                        styles.emptyBookmarkText
+                                                    }
+                                                >
+                                                    No bookmarks yet
+                                                </Text>
+                                                <Text
+                                                    style={
+                                                        styles.emptyBookmarkSubtext
+                                                    }
+                                                >
+                                                    Tap + to add a bookmark
+                                                </Text>
+                                            </View>
+                                        }
+                                        renderItem={({ item }) => (
+                                            <Pressable
+                                                onPress={() =>
+                                                    seekToBookmark(
+                                                        item.timestamp,
+                                                    )
+                                                }
+                                                style={({ pressed }) => [
+                                                    styles.bookmarkItem,
+                                                    pressed &&
+                                                        styles.bookmarkItemPressed,
+                                                ]}
+                                            >
+                                                <View
+                                                    style={styles.bookmarkInfo}
+                                                >
+                                                    <MaterialCommunityIcons
+                                                        name="bookmark"
+                                                        size={20}
+                                                        color="#0A84FF"
+                                                    />
+                                                    <Text
+                                                        style={
+                                                            styles.bookmarkTimestamp
+                                                        }
+                                                    >
+                                                        {formatTimestamp(
+                                                            item.timestamp,
+                                                        )}
+                                                    </Text>
+                                                </View>
+                                                <Pressable
+                                                    onPress={() =>
+                                                        deleteBookmark(item.id)
+                                                    }
+                                                    style={styles.deleteButton}
+                                                >
+                                                    <MaterialCommunityIcons
+                                                        name="delete-outline"
+                                                        size={20}
+                                                        color="#FF453A"
+                                                    />
+                                                </Pressable>
+                                            </Pressable>
+                                        )}
+                                    />
+                                </View>
+                            </BlurView>
+                        </View>
+                    </Pressable>
+                </Modal>
+
                 {/* Main Content */}
                 <View
                     style={[
@@ -1007,16 +1191,16 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                 <Pressable
                                     style={[
                                         styles.toolButton,
-                                        activeTab === 'crop' &&
+                                        showBookmarksModal &&
                                             styles.toolButtonActive,
                                     ]}
-                                    onPress={() => setActiveTab('crop')}
+                                    onPress={() => setShowBookmarksModal(true)}
                                 >
                                     <MaterialCommunityIcons
-                                        name="crop"
+                                        name="bookmark-outline"
                                         size={24}
                                         color={
-                                            activeTab === 'crop'
+                                            showBookmarksModal
                                                 ? '#0A84FF'
                                                 : '#FFFFFF'
                                         }
@@ -1024,11 +1208,11 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                     <Text
                                         style={[
                                             styles.toolButtonText,
-                                            activeTab === 'crop' &&
+                                            showBookmarksModal &&
                                                 styles.toolButtonTextActive,
                                         ]}
                                     >
-                                        Crop
+                                        Bookmark
                                     </Text>
                                 </Pressable>
                                 <Pressable
@@ -1193,16 +1377,16 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                 <Pressable
                                     style={[
                                         styles.toolButton,
-                                        activeTab === 'crop' &&
+                                        showBookmarksModal &&
                                             styles.toolButtonActive,
                                     ]}
-                                    onPress={() => setActiveTab('crop')}
+                                    onPress={() => setShowBookmarksModal(true)}
                                 >
                                     <MaterialCommunityIcons
-                                        name="crop"
+                                        name="bookmark-outline"
                                         size={24}
                                         color={
-                                            activeTab === 'crop'
+                                            showBookmarksModal
                                                 ? '#0A84FF'
                                                 : '#FFFFFF'
                                         }
@@ -1210,11 +1394,11 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                     <Text
                                         style={[
                                             styles.toolButtonText,
-                                            activeTab === 'crop' &&
+                                            showBookmarksModal &&
                                                 styles.toolButtonTextActive,
                                         ]}
                                     >
-                                        Crop
+                                        Bookmark
                                     </Text>
                                 </Pressable>
                                 <Pressable
@@ -1421,21 +1605,24 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'transparent',
         justifyContent: 'flex-end',
+        marginTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0, // Account for status bar
     },
     modalWrapper: {
         width: '100%',
-        height: 'auto',
+        height: '50%', // Reduced from 75% to 60%
         position: 'relative',
     },
     modalBlur: {
         overflow: 'hidden',
         borderTopLeftRadius: 10,
         borderTopRightRadius: 10,
+        height: '100%', // Take full height of wrapper
     },
     modalContent: {
         width: '100%',
+        height: '100%', // Take full height
         paddingTop: 10,
-        paddingBottom: Platform.OS === 'ios' ? 8 : 0,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 24, // Account for bottom safe area
     },
     modalHandle: {
         width: 36,
@@ -1445,12 +1632,28 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         marginBottom: 24,
     },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        marginBottom: 16,
+        height: 44,
+    },
+    addButton: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+    },
+    addButtonText: {
+        color: '#0A84FF',
+        fontSize: 17,
+        fontWeight: '400',
+    },
     modalTitle: {
         fontSize: 17,
         color: '#FFFFFF',
         fontWeight: '600',
-        textAlign: 'center',
-        marginBottom: 20,
     },
     modalBody: {
         paddingHorizontal: 16,
@@ -1532,5 +1735,54 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '500',
+    },
+    bookmarkList: {
+        flex: 1,
+    },
+    bookmarkListContent: {
+        paddingHorizontal: 16,
+        paddingBottom: 32,
+    },
+    bookmarkItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 8,
+        marginBottom: 8,
+    },
+    bookmarkItemPressed: {
+        opacity: 0.7,
+    },
+    bookmarkInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    bookmarkTimestamp: {
+        color: '#FFFFFF',
+        fontSize: 17,
+    },
+    deleteButton: {
+        padding: 8,
+    },
+    emptyBookmarkList: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+    },
+    emptyBookmarkText: {
+        color: '#FFFFFF',
+        fontSize: 17,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    emptyBookmarkSubtext: {
+        color: '#8E8E93',
+        fontSize: 15,
+        textAlign: 'center',
     },
 })
