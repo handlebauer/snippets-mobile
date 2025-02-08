@@ -39,7 +39,6 @@ export type Database = {
                     avatar_url: string | null
                     github_access_token: string | null
                     github_connected: boolean | null
-                    github_installation_id: string | null
                     github_token_expires_at: string | null
                     github_url: string | null
                     github_username: string | null
@@ -52,7 +51,6 @@ export type Database = {
                     avatar_url?: string | null
                     github_access_token?: string | null
                     github_connected?: boolean | null
-                    github_installation_id?: string | null
                     github_token_expires_at?: string | null
                     github_url?: string | null
                     github_username?: string | null
@@ -65,7 +63,6 @@ export type Database = {
                     avatar_url?: string | null
                     github_access_token?: string | null
                     github_connected?: boolean | null
-                    github_installation_id?: string | null
                     github_token_expires_at?: string | null
                     github_url?: string | null
                     github_username?: string | null
@@ -75,6 +72,38 @@ export type Database = {
                     website?: string | null
                 }
                 Relationships: []
+            }
+            recording_sessions: {
+                Row: {
+                    code: string
+                    created_at: string
+                    id: string
+                    linked_repo: string | null
+                    user_id: string
+                }
+                Insert: {
+                    code: string
+                    created_at?: string
+                    id?: string
+                    linked_repo?: string | null
+                    user_id: string
+                }
+                Update: {
+                    code?: string
+                    created_at?: string
+                    id?: string
+                    linked_repo?: string | null
+                    user_id?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: 'recording_sessions_user_id_fkey'
+                        columns: ['user_id']
+                        isOneToOne: false
+                        referencedRelation: 'profiles'
+                        referencedColumns: ['id']
+                    },
+                ]
             }
             videos: {
                 Row: {
@@ -134,7 +163,12 @@ export type Database = {
             [_ in never]: never
         }
         Functions: {
-            [_ in never]: never
+            get_github_repos_for_session: {
+                Args: {
+                    session_code: string
+                }
+                Returns: Json
+            }
         }
         Enums: {
             [_ in never]: never

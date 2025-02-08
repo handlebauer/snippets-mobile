@@ -1,8 +1,14 @@
 export interface WebRTCSignal {
     type: 'offer' | 'answer' | 'ice-candidate'
     payload: {
-        offer?: RTCSessionDescriptionInit
-        answer?: RTCSessionDescriptionInit
+        offer?: {
+            type: RTCSessionDescriptionType
+            sdp: string
+        }
+        answer?: {
+            type: RTCSessionDescriptionType
+            sdp: string
+        }
         candidate?: RTCIceCandidateInit
     }
 }
@@ -42,3 +48,5 @@ export interface ScreenShareState {
         error?: string
     }
 }
+
+type RTCSessionDescriptionType = 'offer' | 'answer' | 'pranswer' | 'rollback'

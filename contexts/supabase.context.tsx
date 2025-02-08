@@ -3,7 +3,7 @@ import { Linking } from 'react-native'
 
 import { SplashScreen } from 'expo-router'
 
-import { Provider, Session, User } from '@supabase/supabase-js'
+import { Provider, Session, SupabaseClient, User } from '@supabase/supabase-js'
 
 import { supabase } from '@/lib/supabase.client'
 
@@ -17,6 +17,7 @@ export interface SupabaseContextType {
     user: User | null
     session: Session | null
     initialized?: boolean
+    supabase: SupabaseClient
     signUp: (email: string, password: string, username: string) => Promise<void>
     signInWithPassword: (email: string, password: string) => Promise<void>
     signInWithIdToken: (params: {
@@ -31,6 +32,7 @@ export const SupabaseContext = createContext<SupabaseContextType>({
     user: null,
     session: null,
     initialized: false,
+    supabase,
     signUp: async () => {},
     signInWithPassword: async () => {},
     signInWithIdToken: async () => {},
@@ -146,12 +148,12 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
         user,
         session,
         initialized,
+        supabase,
         signUp,
         signInWithPassword,
         signInWithIdToken,
         signOut,
         signInWithGithub,
-        supabase,
     }
 
     return (

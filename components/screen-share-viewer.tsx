@@ -251,7 +251,7 @@ export function ScreenShareViewer({
                             </Text>
                             <Button
                                 mode="contained"
-                                onPress={onStartSession}
+                                onPress={() => onStartSession()}
                                 onLongPress={handleDevModeActivation}
                                 delayLongPress={800}
                                 style={styles.button}
