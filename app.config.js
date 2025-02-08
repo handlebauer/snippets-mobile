@@ -50,8 +50,8 @@ export default {
             reactServerFunctions: true,
         },
         extra: {
-            supabaseUrl: process.env.SUPABASE_URL,
-            supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+            supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+            supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
             openshotAccessKey: process.env.OPENSHOT_ACCESS_KEY,
             openshotBaseUrl: process.env.OPENSHOT_BASE_URL,
             githubOAuthClientId: process.env.GITHUB_APP_CLIENT_ID,

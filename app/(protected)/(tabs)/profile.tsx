@@ -29,7 +29,6 @@ interface ProfileData {
     avatar_url: string
     github_connected: boolean
     github_username?: string
-    github_installation_id?: string
     github_access_token?: string
     github_token_expires_at?: string
 }
@@ -299,7 +298,7 @@ export default function ProfileScreen() {
             const { data, error } = await supabase
                 .from('profiles')
                 .select(
-                    'username, website, github_url, avatar_url, github_connected, github_username, github_installation_id, github_access_token, github_token_expires_at',
+                    'username, website, github_url, avatar_url, github_connected, github_username, github_access_token, github_token_expires_at',
                 )
                 .eq('id', userId)
                 .single()
@@ -400,19 +399,12 @@ export default function ProfileScreen() {
         if (!session?.user.id) return
 
         try {
-            // Remove the GitHub App installation
-            if (profileData.github_installation_id) {
-                // TODO: Call GitHub API to delete the installation
-                // This should be done through a secure backend function
-            }
-
             // Update the profile to remove GitHub connection
             const { error } = await supabase
                 .from('profiles')
                 .update({
                     github_connected: false,
                     github_username: null,
-                    github_installation_id: null,
                     github_access_token: null,
                     github_token_expires_at: null,
                 })
@@ -425,7 +417,6 @@ export default function ProfileScreen() {
                 ...prev,
                 github_connected: false,
                 github_username: undefined,
-                github_installation_id: undefined,
                 github_access_token: undefined,
                 github_token_expires_at: undefined,
             }))
