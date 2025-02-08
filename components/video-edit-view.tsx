@@ -1212,7 +1212,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                                 styles.toolButtonTextActive,
                                         ]}
                                     >
-                                        Bookmark
+                                        Bookmarks
                                     </Text>
                                 </Pressable>
                                 <Pressable
@@ -1398,7 +1398,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                                 styles.toolButtonTextActive,
                                         ]}
                                     >
-                                        Bookmark
+                                        Bookmarks
                                     </Text>
                                 </Pressable>
                                 <Pressable
@@ -1547,7 +1547,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginHorizontal: 12,
         marginVertical: 12,
-        width: 60,
+        width: 64,
     },
     toolButtonActive: {
         opacity: 1,
