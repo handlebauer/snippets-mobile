@@ -110,6 +110,7 @@ export type Database = {
                     created_at: string | null
                     duration: number | null
                     id: string
+                    linked_repo: string | null
                     mime_type: string | null
                     name: string
                     profile_id: string
@@ -124,6 +125,7 @@ export type Database = {
                     created_at?: string | null
                     duration?: number | null
                     id?: string
+                    linked_repo?: string | null
                     mime_type?: string | null
                     name: string
                     profile_id: string
@@ -138,6 +140,7 @@ export type Database = {
                     created_at?: string | null
                     duration?: number | null
                     id?: string
+                    linked_repo?: string | null
                     mime_type?: string | null
                     name?: string
                     profile_id?: string

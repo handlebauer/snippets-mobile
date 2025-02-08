@@ -25,6 +25,7 @@ import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native'
 import { supabase } from '@/lib/supabase.client'
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
+import { GitHubBadge } from './github-badge'
 import { VideoScrubber } from './video-scrubber'
 
 import type { VideoMetadata } from '@/types/webrtc'
@@ -1043,6 +1044,9 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                                 isLooping={false}
                                 volume={1.0}
                             />
+                            {video?.linked_repo && (
+                                <GitHubBadge repoName={video.linked_repo} />
+                            )}
                         </View>
 
                         {/* Scrubber - simplified layout */}
@@ -1449,5 +1453,26 @@ const styles = StyleSheet.create({
     },
     navButtonDisabled: {
         color: '#999999',
+    },
+    repoBadgeLink: {
+        position: 'absolute',
+        bottom: 16,
+        alignSelf: 'center',
+    },
+    repoBadgeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    },
+    repoBadgeIcon: {
+        marginRight: 6,
+    },
+    repoBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '500',
     },
 })

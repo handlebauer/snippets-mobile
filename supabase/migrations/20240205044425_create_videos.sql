@@ -9,6 +9,7 @@ create table if not exists public.videos (
     trim_end numeric, -- in seconds
     size bigint, -- in bytes
     mime_type text,
+    linked_repo text, -- repository identifier for linked GitHub repos
     created_at timestamp with time zone default now(),
     updated_at timestamp with time zone default now(),
     

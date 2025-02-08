@@ -35,6 +35,7 @@ export interface VideoMetadata {
     created_at: string
     thumbnail_url?: string
     views?: number
+    linked_repo?: string | null
 }
 
 export interface ScreenShareState {
