@@ -1,3 +1,8 @@
+import type { Database } from '@/lib/supabase.types'
+
+type RecordingSessionType =
+    Database['public']['Enums']['recording_session_type']
+
 export interface WebRTCSignal {
     type: 'offer' | 'answer' | 'ice-candidate'
     payload: {
@@ -43,6 +48,7 @@ export interface ScreenShareState {
     streamURL: string | null
     statusMessage: string | null
     isRecording?: boolean
+    sessionType?: RecordingSessionType | null
     videoProcessing?: {
         status: 'processing' | 'completed' | 'error'
         videoId?: string

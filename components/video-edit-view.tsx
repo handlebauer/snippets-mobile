@@ -549,7 +549,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
 
     // Replace onClose with router.back()
     const handleCancel = () => {
-        router.back()
+        router.push('/(protected)/(tabs)/videos')
     }
 
     // Add share handler

@@ -235,19 +235,27 @@ export function ScreenShareViewer({
                     <View style={styles.contentContainer}>
                         <View style={styles.card}>
                             <MaterialCommunityIcons
-                                name="laptop"
+                                name={
+                                    effectiveState.sessionType === 'code_editor'
+                                        ? 'code-braces'
+                                        : 'laptop'
+                                }
                                 size={48}
                                 color="#FFFFFF"
                                 style={styles.icon}
                             />
                             <Text variant="titleLarge" style={styles.subtitle}>
-                                Connect Device
+                                {effectiveState.sessionType === 'code_editor'
+                                    ? 'Code Editor Session'
+                                    : 'Screen Recording Session'}
                             </Text>
                             <Text
                                 variant="bodyLarge"
                                 style={styles.description}
                             >
-                                Start a new recording session
+                                {effectiveState.sessionType === 'code_editor'
+                                    ? 'Start a new code editing session'
+                                    : 'Start a new recording session'}
                             </Text>
                             <Button
                                 mode="contained"
@@ -348,7 +356,7 @@ export function ScreenShareViewer({
                             style={styles.icon}
                         />
                         <Text variant="titleLarge" style={styles.subtitle}>
-                            Your Code
+                            Your Pairing Code
                         </Text>
                         <View style={styles.codeContainer}>
                             <Text

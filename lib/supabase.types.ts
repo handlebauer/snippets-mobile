@@ -34,6 +34,85 @@ export type Database = {
     }
     public: {
         Tables: {
+            editor_event_batches: {
+                Row: {
+                    created_at: string
+                    event_count: number
+                    events: Json
+                    id: string
+                    is_compressed: boolean | null
+                    session_id: string
+                    timestamp_end: number
+                    timestamp_start: number
+                }
+                Insert: {
+                    created_at?: string
+                    event_count: number
+                    events: Json
+                    id?: string
+                    is_compressed?: boolean | null
+                    session_id: string
+                    timestamp_end: number
+                    timestamp_start: number
+                }
+                Update: {
+                    created_at?: string
+                    event_count?: number
+                    events?: Json
+                    id?: string
+                    is_compressed?: boolean | null
+                    session_id?: string
+                    timestamp_end?: number
+                    timestamp_start?: number
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: 'editor_event_batches_session_id_fkey'
+                        columns: ['session_id']
+                        isOneToOne: false
+                        referencedRelation: 'recording_sessions'
+                        referencedColumns: ['id']
+                    },
+                ]
+            }
+            editor_snapshots: {
+                Row: {
+                    content: string
+                    created_at: string
+                    event_index: number
+                    id: string
+                    metadata: Json | null
+                    session_id: string
+                    timestamp: number
+                }
+                Insert: {
+                    content: string
+                    created_at?: string
+                    event_index: number
+                    id?: string
+                    metadata?: Json | null
+                    session_id: string
+                    timestamp: number
+                }
+                Update: {
+                    content?: string
+                    created_at?: string
+                    event_index?: number
+                    id?: string
+                    metadata?: Json | null
+                    session_id?: string
+                    timestamp?: number
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: 'editor_snapshots_session_id_fkey'
+                        columns: ['session_id']
+                        isOneToOne: false
+                        referencedRelation: 'recording_sessions'
+                        referencedColumns: ['id']
+                    },
+                ]
+            }
             profiles: {
                 Row: {
                     avatar_url: string | null
@@ -77,22 +156,40 @@ export type Database = {
                 Row: {
                     code: string
                     created_at: string
+                    duration_ms: number | null
                     id: string
+                    initial_content: string | null
                     linked_repo: string | null
+                    status: string | null
+                    type:
+                        | Database['public']['Enums']['recording_session_type']
+                        | null
                     user_id: string
                 }
                 Insert: {
                     code: string
                     created_at?: string
+                    duration_ms?: number | null
                     id?: string
+                    initial_content?: string | null
                     linked_repo?: string | null
+                    status?: string | null
+                    type?:
+                        | Database['public']['Enums']['recording_session_type']
+                        | null
                     user_id: string
                 }
                 Update: {
                     code?: string
                     created_at?: string
+                    duration_ms?: number | null
                     id?: string
+                    initial_content?: string | null
                     linked_repo?: string | null
+                    status?: string | null
+                    type?:
+                        | Database['public']['Enums']['recording_session_type']
+                        | null
                     user_id?: string
                 }
                 Relationships: [
@@ -166,6 +263,10 @@ export type Database = {
             [_ in never]: never
         }
         Functions: {
+            compress_old_event_batches: {
+                Args: Record<PropertyKey, never>
+                Returns: undefined
+            }
             get_github_repos_for_session: {
                 Args: {
                     pairing_code: string
@@ -181,7 +282,8 @@ export type Database = {
             }
         }
         Enums: {
-            [_ in never]: never
+            editor_event_type: 'insert' | 'delete' | 'replace'
+            recording_session_type: 'screen_recording' | 'code_editor'
         }
         CompositeTypes: {
             [_ in never]: never

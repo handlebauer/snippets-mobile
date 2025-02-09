@@ -10,7 +10,7 @@
         "test": "jest --watchAll",
         "lint": "expo lint",
         "prepare": "husky",
-        "db:gen-types": "bunx supabase gen types typescript --local > lib/supabase.types.ts",
+        "db:gen-types": "bunx supabase gen types typescript --local | tee lib/supabase.types.ts ../web/src/lib/supabase.types.ts",
         "db:seed": "bun scripts/seeds/index.ts",
         "db:init:local": "bunx supabase db reset && bun run db:gen-types && bun run db:seed",
         "db:init:prod": "bunx supabase db reset --linked && bun run db:gen-types && bun run db:seed",

@@ -9,8 +9,12 @@ import { useSessionCreator } from '@/hooks/use-session-creator'
 import { cleanupChannel, setupChannel } from './session/channel'
 import { createPeerConnection, setupPeerConnection } from './webrtc/connection'
 
+import type { Database } from '@/lib/supabase.types'
 import type { VideoProcessingSignal } from '@/types/webrtc'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+
+type RecordingSessionType =
+    Database['public']['Enums']['recording_session_type']
 
 // Generate a random 6-character code
 const generatePairingCode = () => {
@@ -22,29 +26,52 @@ const generatePairingCode = () => {
     return code
 }
 
-interface WebRTCState {
+interface SessionState {
     isPairing: boolean
     sessionCode: string | null
     error: string | null
     streamURL: string | null
     statusMessage: string | null
+    sessionType: RecordingSessionType | null
+    // Screen recording specific
     videoProcessing?: VideoProcessingSignal
+    // Editor specific
+    content?: string
+    isInitialContentSet?: boolean
 }
 
-export const useWebRTC = () => {
+interface SessionContext {
+    peerConnection: RTCPeerConnection | null
+    stream: MediaStream | null
+    mediaRecorder: MediaRecorder | null
+    candidateQueue: RTCIceCandidate[]
+}
+
+export function useSession() {
     const { supabase } = useSupabase()
     const { createSession } = useSessionCreator()
-    const [state, setState] = useState<WebRTCState>({
+    const [state, setState] = useState<SessionState>({
         isPairing: false,
         sessionCode: null,
         error: null,
         streamURL: null,
         statusMessage: null,
+        sessionType: null,
     })
 
-    const peerConnection = useRef<RTCPeerConnection | null>(null)
+    const context = useRef<SessionContext>({
+        peerConnection: null,
+        stream: null,
+        mediaRecorder: null,
+        candidateQueue: [],
+    })
     const channel = useRef<RealtimeChannel | null>(null)
-    const candidateQueue = useRef<RTCIceCandidate[]>([])
+
+    // Add setSessionType function
+    const setSessionType = useCallback((type: RecordingSessionType) => {
+        console.log('🔄 Setting session type:', type)
+        setState(prev => ({ ...prev, sessionType: type }))
+    }, [])
 
     const handleVideoProcessing = useCallback(
         (signal: VideoProcessingSignal) => {
@@ -61,6 +88,14 @@ export const useWebRTC = () => {
         },
         [],
     )
+
+    // const handleEditorContent = useCallback((content: string) => {
+    //     setState(prev => ({
+    //         ...prev,
+    //         content,
+    //         isInitialContentSet: true,
+    //     }))
+    // }, [])
 
     const handlePairDevice = useCallback(
         async (pairingCode?: string) => {
@@ -79,10 +114,10 @@ export const useWebRTC = () => {
                     throw new Error('Failed to create recording session')
                 }
 
-                // Create and store peer connection
-                peerConnection.current = createPeerConnection()
+                // Create and store peer connection for screen recording
+                context.current.peerConnection = createPeerConnection()
 
-                // Setup channel with video processing handler
+                // Setup channel with handlers
                 channel.current = await setupChannel(
                     supabase,
                     code,
@@ -96,25 +131,35 @@ export const useWebRTC = () => {
                     statusMessage: 'Web client connected',
                 }))
 
-                // Notify web client of session type
-                channel.current.send({
-                    type: 'broadcast',
-                    event: 'session_type',
-                    payload: { type: 'screen_recording' },
-                })
+                // Send session type AFTER successful pairing
+                if (state.sessionType) {
+                    console.log(
+                        '📝 Sending session type after pairing:',
+                        state.sessionType,
+                    )
+                    channel.current?.send({
+                        type: 'broadcast',
+                        event: 'session_type',
+                        payload: { type: state.sessionType },
+                    })
+                } else {
+                    console.log('⚠️ No session type set after pairing')
+                }
 
-                // Setup WebRTC handlers and ICE candidates
-                await setupPeerConnection(
-                    peerConnection.current,
-                    channel.current,
-                    candidateQueue.current,
-                    (url: string) =>
-                        setState(prev => ({
-                            ...prev,
-                            streamURL: url,
-                            statusMessage: null,
-                        })),
-                )
+                // For screen recording, set up WebRTC
+                if (context.current.peerConnection) {
+                    await setupPeerConnection(
+                        context.current.peerConnection,
+                        channel.current,
+                        context.current.candidateQueue,
+                        (url: string) =>
+                            setState(prev => ({
+                                ...prev,
+                                streamURL: url,
+                                statusMessage: null,
+                            })),
+                    )
+                }
             } catch (error) {
                 console.error('Error pairing device:', error)
                 setState(prev => ({
@@ -128,13 +173,19 @@ export const useWebRTC = () => {
                 }))
             }
         },
-        [supabase, handleVideoProcessing, createSession],
+        [supabase, handleVideoProcessing, createSession, state.sessionType],
     )
 
     const cleanup = useCallback(() => {
-        if (peerConnection.current) {
-            peerConnection.current.close()
-            peerConnection.current = null
+        if (context.current.peerConnection) {
+            context.current.peerConnection.close()
+            context.current.peerConnection = null
+        }
+
+        if (context.current.stream) {
+            const tracks = context.current.stream.getTracks()
+            tracks.forEach(track => track.stop())
+            context.current.stream = null
         }
 
         if (channel.current) {
@@ -142,7 +193,7 @@ export const useWebRTC = () => {
             channel.current = null
         }
 
-        candidateQueue.current = []
+        context.current.candidateQueue = []
 
         setState(prev => ({
             ...prev,
@@ -152,6 +203,9 @@ export const useWebRTC = () => {
             sessionCode: null,
             statusMessage: null,
             videoProcessing: undefined,
+            content: undefined,
+            isInitialContentSet: false,
+            sessionType: null,
         }))
     }, [supabase])
 
@@ -161,10 +215,32 @@ export const useWebRTC = () => {
         }
     }, [cleanup])
 
-    return {
-        state,
+    // For backward compatibility with existing components
+    const screenSession = {
+        state: {
+            ...state,
+            isSharing: !!state.streamURL,
+        },
         startSession: handlePairDevice,
         resetState: cleanup,
         channel,
+    }
+
+    return {
+        state,
+        startSession: handlePairDevice,
+        cleanup,
+        channel,
+        setSessionType, // Expose setSessionType
+        // For compatibility with existing components
+        screen: screenSession,
+        // Editor specific functionality
+        editor:
+            state.sessionType === 'code_editor'
+                ? {
+                      content: state.content,
+                      isInitialContentSet: state.isInitialContentSet,
+                  }
+                : null,
     }
 }
