@@ -692,6 +692,14 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
         }
     }
 
+    const handleUpdateBookmark = async (id: string, label: string) => {
+        setBookmarks(prev =>
+            prev.map(bookmark =>
+                bookmark.id === id ? { ...bookmark, label } : bookmark,
+            ),
+        )
+    }
+
     if (error) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -1301,6 +1309,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                 onAddBookmark={addBookmark}
                 onDeleteBookmark={deleteBookmark}
                 onSeekToBookmark={seekToBookmark}
+                onUpdateBookmark={handleUpdateBookmark}
             />
             {videoUrl && (
                 <VideoThumbnailSelectorModal

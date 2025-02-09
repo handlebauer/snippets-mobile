@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
     Animated,
     FlatList,
     Modal,
     Pressable,
     StyleSheet,
+    TextInput,
     View,
 } from 'react-native'
 import { Text } from 'react-native-paper'
@@ -27,6 +28,7 @@ interface VideoBookmarksModalProps {
     onAddBookmark: () => void
     onDeleteBookmark: (id: string) => void
     onSeekToBookmark: (timestamp: number) => void
+    onUpdateBookmark?: (id: string, label: string) => void
 }
 
 function formatTimestamp(seconds: number) {
@@ -43,9 +45,33 @@ export function VideoBookmarksModal({
     onAddBookmark,
     onDeleteBookmark,
     onSeekToBookmark,
+    onUpdateBookmark,
 }: VideoBookmarksModalProps) {
     const insets = useSafeAreaInsets()
     const slideAnim = useRef(new Animated.Value(0)).current
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [editingLabel, setEditingLabel] = useState('')
+    const inputRef = useRef<TextInput>(null)
+
+    const handlePressOutside = () => {
+        if (editingId) {
+            inputRef.current?.blur()
+        }
+    }
+
+    // Focus input when a new bookmark is added
+    useEffect(() => {
+        if (visible && bookmarks.length > 0) {
+            const latestBookmark = bookmarks[bookmarks.length - 1]
+            if (!latestBookmark.label) {
+                setEditingId(latestBookmark.id)
+                setEditingLabel('')
+                setTimeout(() => {
+                    inputRef.current?.focus()
+                }, 100)
+            }
+        }
+    }, [visible, bookmarks])
 
     useEffect(() => {
         Animated.spring(slideAnim, {
@@ -54,6 +80,14 @@ export function VideoBookmarksModal({
             damping: 15,
         }).start()
     }, [visible])
+
+    const handleLabelSubmit = (id: string, label: string) => {
+        if (onUpdateBookmark) {
+            onUpdateBookmark(id, label.trim())
+        }
+        setEditingId(null)
+        setEditingLabel('')
+    }
 
     return (
         <Modal
@@ -87,73 +121,139 @@ export function VideoBookmarksModal({
                         tint="dark"
                         style={styles.bottomSheet}
                     >
-                        <View style={styles.handle} />
-                        <View style={styles.bottomSheetHeader}>
-                            <View style={styles.headerLeft} />
-                            <Text style={styles.bottomSheetTitle}>
-                                Bookmarks
-                            </Text>
-                            <Pressable
-                                style={styles.addButton}
-                                onPress={onAddBookmark}
-                            >
-                                <Text style={styles.addButtonText}>Add</Text>
-                            </Pressable>
-                        </View>
-
-                        <FlatList
-                            data={bookmarks}
-                            keyExtractor={item => item.id}
-                            style={styles.bookmarksList}
-                            contentContainerStyle={styles.bookmarksListContent}
-                            showsVerticalScrollIndicator={true}
-                            bounces={true}
-                            ListEmptyComponent={
-                                <View style={styles.emptyBookmarksList}>
-                                    <Text style={styles.emptyBookmarksText}>
-                                        No bookmarks yet
-                                    </Text>
-                                    <Text style={styles.emptyBookmarksSubtext}>
-                                        Tap Add to create a bookmark
-                                    </Text>
-                                </View>
-                            }
-                            renderItem={({ item }) => (
+                        <Pressable
+                            onPress={handlePressOutside}
+                            style={styles.contentContainer}
+                        >
+                            <View style={styles.handle} />
+                            <View style={styles.bottomSheetHeader}>
+                                <View style={styles.headerLeft} />
+                                <Text style={styles.bottomSheetTitle}>
+                                    Bookmarks
+                                </Text>
                                 <Pressable
-                                    onPress={() =>
-                                        onSeekToBookmark(item.timestamp)
-                                    }
-                                    style={({ pressed }) => [
-                                        styles.bookmarksItem,
-                                        pressed && styles.bookmarksItemPressed,
-                                    ]}
+                                    style={styles.addButton}
+                                    onPress={onAddBookmark}
                                 >
-                                    <View style={styles.bookmarksItemInfo}>
-                                        <MaterialCommunityIcons
-                                            name="bookmark"
-                                            size={20}
-                                            color="#0A84FF"
-                                        />
-                                        <Text style={styles.bookmarksTimestamp}>
-                                            {formatTimestamp(item.timestamp)}
+                                    <Text style={styles.addButtonText}>
+                                        Add
+                                    </Text>
+                                </Pressable>
+                            </View>
+
+                            <FlatList
+                                data={bookmarks}
+                                keyExtractor={item => item.id}
+                                style={styles.bookmarksList}
+                                contentContainerStyle={
+                                    styles.bookmarksListContent
+                                }
+                                showsVerticalScrollIndicator={true}
+                                bounces={true}
+                                ListEmptyComponent={
+                                    <View style={styles.emptyBookmarksList}>
+                                        <Text style={styles.emptyBookmarksText}>
+                                            No bookmarks yet
+                                        </Text>
+                                        <Text
+                                            style={styles.emptyBookmarksSubtext}
+                                        >
+                                            Tap Add to create a bookmark
                                         </Text>
                                     </View>
+                                }
+                                renderItem={({ item }) => (
                                     <Pressable
-                                        onPress={() =>
-                                            onDeleteBookmark(item.id)
-                                        }
-                                        style={styles.bookmarksDeleteButton}
-                                        hitSlop={8}
+                                        onPress={handlePressOutside}
+                                        style={styles.bookmarksItem}
                                     >
-                                        <MaterialCommunityIcons
-                                            name="delete-outline"
-                                            size={20}
-                                            color="#FF453A"
+                                        <Pressable
+                                            style={({ pressed }) => [
+                                                styles.bookmarksItemLeft,
+                                                pressed &&
+                                                    styles.timestampPressed,
+                                            ]}
+                                            onPress={() =>
+                                                onSeekToBookmark(item.timestamp)
+                                            }
+                                        >
+                                            <MaterialCommunityIcons
+                                                name="bookmark"
+                                                size={20}
+                                                color="#0A84FF"
+                                            />
+                                            <Text
+                                                style={
+                                                    styles.bookmarksTimestamp
+                                                }
+                                            >
+                                                {formatTimestamp(
+                                                    item.timestamp,
+                                                )}
+                                            </Text>
+                                            <MaterialCommunityIcons
+                                                name="chevron-right"
+                                                size={16}
+                                                color="#8E8E93"
+                                                style={styles.timestampIcon}
+                                            />
+                                        </Pressable>
+
+                                        <TextInput
+                                            ref={
+                                                editingId === item.id
+                                                    ? inputRef
+                                                    : undefined
+                                            }
+                                            style={styles.labelInput}
+                                            value={
+                                                editingId === item.id
+                                                    ? editingLabel
+                                                    : item.label || ''
+                                            }
+                                            onChangeText={setEditingLabel}
+                                            onFocus={() => {
+                                                setEditingId(item.id)
+                                                setEditingLabel(
+                                                    item.label || '',
+                                                )
+                                            }}
+                                            onBlur={() => {
+                                                if (editingId === item.id) {
+                                                    handleLabelSubmit(
+                                                        item.id,
+                                                        editingLabel,
+                                                    )
+                                                }
+                                            }}
+                                            onSubmitEditing={() => {
+                                                handleLabelSubmit(
+                                                    item.id,
+                                                    editingLabel,
+                                                )
+                                            }}
+                                            placeholder="Add label..."
+                                            placeholderTextColor="#8E8E93"
+                                            returnKeyType="done"
                                         />
+
+                                        <Pressable
+                                            onPress={() =>
+                                                onDeleteBookmark(item.id)
+                                            }
+                                            style={styles.bookmarksDeleteButton}
+                                            hitSlop={8}
+                                        >
+                                            <MaterialCommunityIcons
+                                                name="delete-outline"
+                                                size={20}
+                                                color="#FF453A"
+                                            />
+                                        </Pressable>
                                     </Pressable>
-                                </Pressable>
-                            )}
-                        />
+                                )}
+                            />
+                        </Pressable>
                     </BlurView>
                 </Animated.View>
             </View>
@@ -226,25 +326,40 @@ const styles = StyleSheet.create({
     bookmarksItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
         minHeight: 44,
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderRadius: 8,
         marginBottom: 8,
+        gap: 12,
     },
-    bookmarksItemPressed: {
-        opacity: 0.7,
-    },
-    bookmarksItemInfo: {
+    bookmarksItemLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        minWidth: 80,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+        backgroundColor: 'rgba(10, 132, 255, 0.1)',
+    },
+    timestampPressed: {
+        opacity: 0.7,
+    },
+    timestampIcon: {
+        marginLeft: 2,
     },
     bookmarksTimestamp: {
         color: '#FFFFFF',
-        fontSize: 17,
+        fontSize: 15,
+    },
+    labelInput: {
+        flex: 1,
+        color: '#FFFFFF',
+        fontSize: 15,
+        padding: 0,
+        height: 36,
     },
     bookmarksDeleteButton: {
         padding: 8,
@@ -265,5 +380,8 @@ const styles = StyleSheet.create({
         color: '#8E8E93',
         fontSize: 15,
         textAlign: 'center',
+    },
+    contentContainer: {
+        flex: 1,
     },
 })
