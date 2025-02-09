@@ -29,6 +29,7 @@ import { GitHubBadge } from './github-badge'
 import { VideoBookmarksModal } from './video-bookmarks-modal'
 import { VideoMetadataModal } from './video-metadata-modal'
 import { VideoScrubber } from './video-scrubber'
+import { VideoThumbnailSelectorModal } from './video-thumbnail-selector-modal'
 
 import type { VideoMetadata } from '@/types/webrtc'
 import type { AVPlaybackStatus } from 'expo-av'
@@ -99,6 +100,8 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     const [showMenu, setShowMenu] = React.useState(false)
     const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 })
     const moreButtonRef = React.useRef<View>(null)
+    const [showThumbnailModal, setShowThumbnailModal] = React.useState(false)
+    const [, setThumbnailLoading] = React.useState(false)
 
     // Update both ref and state when setting time
     const updateCurrentTime = React.useCallback((time: number) => {
@@ -620,6 +623,73 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     // Delete bookmark
     const deleteBookmark = (id: string) => {
         setBookmarks(prev => prev.filter(b => b.id !== id))
+    }
+
+    // Add thumbnail selection handler
+    const handleThumbnailSelect = async (thumbnailUri: string) => {
+        if (!video) return
+
+        setThumbnailLoading(true)
+        try {
+            // Read the thumbnail file as base64
+            const base64Data = await FileSystem.readAsStringAsync(
+                thumbnailUri,
+                {
+                    encoding: FileSystem.EncodingType.Base64,
+                },
+            )
+
+            // Convert base64 to binary data
+            const binaryData = Buffer.from(base64Data, 'base64')
+
+            // Generate consistent filename based on timestamp
+            const fileName = `video_${Date.now()}`
+            const thumbnailPath = `${videoId}/${fileName}_thumb.jpg`
+
+            // Upload thumbnail to storage
+            const { error: uploadError } = await supabase.storage
+                .from('videos')
+                .upload(thumbnailPath, binaryData, {
+                    contentType: 'image/jpeg',
+                    upsert: true,
+                })
+
+            if (uploadError) throw uploadError
+
+            // Get public URL for the thumbnail
+            const { data: publicUrlData } = supabase.storage
+                .from('videos')
+                .getPublicUrl(thumbnailPath)
+
+            if (!publicUrlData?.publicUrl) {
+                throw new Error('Failed to get public URL for thumbnail')
+            }
+
+            // Update video metadata
+            const { error: updateError } = await supabase
+                .from('videos')
+                .update({
+                    thumbnail_url: publicUrlData.publicUrl,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', videoId)
+
+            if (updateError) throw updateError
+
+            // Update local video state
+            setVideo(prev =>
+                prev
+                    ? {
+                          ...prev,
+                          thumbnail_url: publicUrlData.publicUrl,
+                      }
+                    : null,
+            )
+        } catch (err) {
+            console.error('Failed to update thumbnail:', err)
+        } finally {
+            setThumbnailLoading(false)
+        }
     }
 
     if (error) {
@@ -1207,6 +1277,14 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                         icon: 'information',
                         onPress: () => setShowMetadataModal(true),
                     },
+                    {
+                        title: 'Choose Thumbnail',
+                        icon: 'image',
+                        onPress: () => {
+                            setShowMenu(false)
+                            setShowThumbnailModal(true)
+                        },
+                    },
                 ]}
             />
             {video && (
@@ -1224,6 +1302,15 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                 onDeleteBookmark={deleteBookmark}
                 onSeekToBookmark={seekToBookmark}
             />
+            {videoUrl && (
+                <VideoThumbnailSelectorModal
+                    visible={showThumbnailModal}
+                    onClose={() => setShowThumbnailModal(false)}
+                    videoUri={videoUrl}
+                    duration={duration}
+                    onSelectThumbnail={handleThumbnailSelect}
+                />
+            )}
         </View>
     )
 }
