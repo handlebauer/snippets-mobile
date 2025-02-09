@@ -185,7 +185,13 @@ export function GitHubBadge({ repoName }: GitHubBadgeProps) {
             <Pressable
                 onPress={handlePress}
                 onLongPress={handleLongPress}
-                style={styles.repoBadgeLink}
+                style={({ pressed }) => [
+                    styles.repoBadgeLink,
+                    (pressed || visible) && {
+                        opacity: 0.7,
+                        transform: [{ scale: 0.97 }],
+                    },
+                ]}
             >
                 <BlurView
                     intensity={80}
