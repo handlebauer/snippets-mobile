@@ -3,8 +3,6 @@ import React from 'react'
 import {
     ActivityIndicator,
     Animated,
-    FlatList,
-    Modal,
     Platform,
     Pressable,
     Share,
@@ -16,7 +14,6 @@ import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ResizeMode, Video } from 'expo-av'
-import { BlurView } from 'expo-blur'
 import * as FileSystem from 'expo-file-system'
 import { useRouter } from 'expo-router'
 import * as VideoThumbnails from 'expo-video-thumbnails'
@@ -27,7 +24,10 @@ import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native'
 import { supabase } from '@/lib/supabase.client'
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
+import { FloatingMenu } from './floating-menu'
 import { GitHubBadge } from './github-badge'
+import { VideoBookmarksModal } from './video-bookmarks-modal'
+import { VideoMetadataModal } from './video-metadata-modal'
 import { VideoScrubber } from './video-scrubber'
 
 import type { VideoMetadata } from '@/types/webrtc'
@@ -42,18 +42,6 @@ interface Bookmark {
     timestamp: number
     label?: string
     createdAt: string
-}
-
-function formatFileSize(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`
-    } else if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KB`
-    } else if (bytes < 1024 * 1024 * 1024) {
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    } else {
-        return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-    }
 }
 
 // Throttle helper function
@@ -108,6 +96,9 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     const [showMetadataModal, setShowMetadataModal] = React.useState(false)
     const [bookmarks, setBookmarks] = React.useState<Bookmark[]>([])
     const [showBookmarksModal, setShowBookmarksModal] = React.useState(false)
+    const [showMenu, setShowMenu] = React.useState(false)
+    const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 })
+    const moreButtonRef = React.useRef<View>(null)
 
     // Update both ref and state when setting time
     const updateCurrentTime = React.useCallback((time: number) => {
@@ -579,16 +570,6 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
         }
     }, [videoUrl, video?.linked_repo])
 
-    // Format timestamp as MM:SS.s
-    const formatTimestamp = (seconds: number) => {
-        const minutes = Math.floor(seconds / 60)
-        const remainingSeconds = (seconds % 60).toFixed(1) // Keep one decimal place
-        // Ensure we always show two digits before decimal point
-        const formattedSeconds = remainingSeconds.padStart(4, '0')
-        return `${minutes}:${formattedSeconds}`
-    }
-
-    // Add bookmark at current timestamp
     const addBookmark = async () => {
         if (!videoRef.current) return
 
@@ -604,7 +585,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
             }
 
             const newBookmark: Bookmark = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: Math.random().toString(36).slice(2, 9),
                 timestamp,
                 createdAt: new Date().toISOString(),
             }
@@ -692,15 +673,35 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                         <Text style={styles.navButton}>Cancel</Text>
                     </Pressable>
                     <View style={styles.titleContainer}>
-                        <Text style={styles.navTitle}> Video</Text>
+                        <Text style={styles.navTitle}>Video</Text>
                         <Pressable
-                            onPress={() => setShowMetadataModal(true)}
-                            style={styles.infoButton}
+                            onPress={_event => {
+                                if (moreButtonRef.current) {
+                                    moreButtonRef.current.measure(
+                                        (
+                                            _x,
+                                            _y,
+                                            _width,
+                                            _height,
+                                            pageX,
+                                            pageY,
+                                        ) => {
+                                            setMenuPosition({
+                                                x: pageX,
+                                                y: pageY,
+                                            })
+                                            setShowMenu(true)
+                                        },
+                                    )
+                                }
+                            }}
+                            style={styles.moreButton}
+                            ref={moreButtonRef}
                         >
                             <MaterialCommunityIcons
-                                name="information"
-                                size={20}
-                                color="#CCCCCC"
+                                name="dots-horizontal"
+                                size={24}
+                                color="#FFFFFF"
                             />
                         </Pressable>
                     </View>
@@ -885,233 +886,6 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                         </Text>
                     </Pressable>
                 </View>
-
-                {/* Metadata Modal */}
-                <Modal
-                    visible={showMetadataModal}
-                    transparent={true}
-                    animationType="slide"
-                    onRequestClose={() => setShowMetadataModal(false)}
-                    statusBarTranslucent={true}
-                >
-                    <Pressable
-                        style={styles.modalOverlay}
-                        onPress={() => setShowMetadataModal(false)}
-                    >
-                        <View style={styles.modalWrapper}>
-                            <BlurView
-                                intensity={90}
-                                style={styles.modalBlur}
-                                tint="dark"
-                            >
-                                <View style={styles.modalContent}>
-                                    <View style={styles.modalHandle} />
-                                    <Text style={styles.modalTitle}>
-                                        Video Details
-                                    </Text>
-                                    <View style={styles.modalBody}>
-                                        <View style={styles.metadataRow}>
-                                            <MaterialCommunityIcons
-                                                name="clock-outline"
-                                                size={22}
-                                                color="#0A84FF"
-                                            />
-                                            <View
-                                                style={
-                                                    styles.metadataTextContainer
-                                                }
-                                            >
-                                                <Text
-                                                    style={styles.metadataLabel}
-                                                >
-                                                    Duration
-                                                </Text>
-                                                <Text
-                                                    style={styles.metadataValue}
-                                                >
-                                                    {Math.round(video.duration)}
-                                                    s
-                                                </Text>
-                                            </View>
-                                        </View>
-                                        <View style={styles.metadataRow}>
-                                            <MaterialCommunityIcons
-                                                name="file-outline"
-                                                size={22}
-                                                color="#0A84FF"
-                                            />
-                                            <View
-                                                style={
-                                                    styles.metadataTextContainer
-                                                }
-                                            >
-                                                <Text
-                                                    style={styles.metadataLabel}
-                                                >
-                                                    Size
-                                                </Text>
-                                                <Text
-                                                    style={styles.metadataValue}
-                                                >
-                                                    {formatFileSize(video.size)}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                        <View style={styles.metadataRow}>
-                                            <MaterialCommunityIcons
-                                                name="calendar-outline"
-                                                size={22}
-                                                color="#0A84FF"
-                                            />
-                                            <View
-                                                style={
-                                                    styles.metadataTextContainer
-                                                }
-                                            >
-                                                <Text
-                                                    style={styles.metadataLabel}
-                                                >
-                                                    Created
-                                                </Text>
-                                                <Text
-                                                    style={styles.metadataValue}
-                                                >
-                                                    {new Date(
-                                                        video.created_at,
-                                                    ).toLocaleDateString()}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                    <Pressable
-                                        style={styles.modalCloseButton}
-                                        onPress={() =>
-                                            setShowMetadataModal(false)
-                                        }
-                                    >
-                                        <Text
-                                            style={styles.modalCloseButtonText}
-                                        >
-                                            Done
-                                        </Text>
-                                    </Pressable>
-                                </View>
-                            </BlurView>
-                        </View>
-                    </Pressable>
-                </Modal>
-
-                {/* Bookmarks Modal */}
-                <Modal
-                    visible={showBookmarksModal}
-                    transparent={true}
-                    animationType="slide"
-                    onRequestClose={() => setShowBookmarksModal(false)}
-                    statusBarTranslucent={true}
-                >
-                    <Pressable
-                        style={styles.modalOverlay}
-                        onPress={() => setShowBookmarksModal(false)}
-                    >
-                        <View style={styles.modalWrapper}>
-                            <BlurView
-                                intensity={90}
-                                style={styles.modalBlur}
-                                tint="dark"
-                            >
-                                <View style={styles.modalContent}>
-                                    <View style={styles.modalHandle} />
-                                    <View style={styles.modalHeader}>
-                                        <Text style={styles.modalTitle}>
-                                            Bookmarks
-                                        </Text>
-                                        <Pressable
-                                            style={styles.addButton}
-                                            onPress={addBookmark}
-                                        >
-                                            <Text style={styles.addButtonText}>
-                                                Add
-                                            </Text>
-                                        </Pressable>
-                                    </View>
-                                    <FlatList
-                                        data={bookmarks}
-                                        keyExtractor={item => item.id}
-                                        style={styles.bookmarkList}
-                                        contentContainerStyle={
-                                            styles.bookmarkListContent
-                                        }
-                                        ListEmptyComponent={
-                                            <View
-                                                style={styles.emptyBookmarkList}
-                                            >
-                                                <Text
-                                                    style={
-                                                        styles.emptyBookmarkText
-                                                    }
-                                                >
-                                                    No bookmarks yet
-                                                </Text>
-                                                <Text
-                                                    style={
-                                                        styles.emptyBookmarkSubtext
-                                                    }
-                                                >
-                                                    Tap + to add a bookmark
-                                                </Text>
-                                            </View>
-                                        }
-                                        renderItem={({ item }) => (
-                                            <Pressable
-                                                onPress={() =>
-                                                    seekToBookmark(
-                                                        item.timestamp,
-                                                    )
-                                                }
-                                                style={({ pressed }) => [
-                                                    styles.bookmarkItem,
-                                                    pressed &&
-                                                        styles.bookmarkItemPressed,
-                                                ]}
-                                            >
-                                                <View
-                                                    style={styles.bookmarkInfo}
-                                                >
-                                                    <MaterialCommunityIcons
-                                                        name="bookmark"
-                                                        size={20}
-                                                        color="#0A84FF"
-                                                    />
-                                                    <Text
-                                                        style={
-                                                            styles.bookmarkTimestamp
-                                                        }
-                                                    >
-                                                        {formatTimestamp(
-                                                            item.timestamp,
-                                                        )}
-                                                    </Text>
-                                                </View>
-                                                <Pressable
-                                                    onPress={() =>
-                                                        deleteBookmark(item.id)
-                                                    }
-                                                    style={styles.deleteButton}
-                                                >
-                                                    <MaterialCommunityIcons
-                                                        name="delete-outline"
-                                                        size={20}
-                                                        color="#FF453A"
-                                                    />
-                                                </Pressable>
-                                            </Pressable>
-                                        )}
-                                    />
-                                </View>
-                            </BlurView>
-                        </View>
-                    </Pressable>
-                </Modal>
 
                 {/* Main Content */}
                 <View
@@ -1423,6 +1197,33 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                     )}
                 </View>
             </SafeAreaView>
+            <FloatingMenu
+                visible={showMenu}
+                onClose={() => setShowMenu(false)}
+                anchorPosition={menuPosition}
+                items={[
+                    {
+                        title: 'Video Details',
+                        icon: 'information',
+                        onPress: () => setShowMetadataModal(true),
+                    },
+                ]}
+            />
+            {video && (
+                <VideoMetadataModal
+                    visible={showMetadataModal}
+                    onClose={() => setShowMetadataModal(false)}
+                    video={video}
+                />
+            )}
+            <VideoBookmarksModal
+                visible={showBookmarksModal}
+                onClose={() => setShowBookmarksModal(false)}
+                bookmarks={bookmarks}
+                onAddBookmark={addBookmark}
+                onDeleteBookmark={deleteBookmark}
+                onSeekToBookmark={seekToBookmark}
+            />
         </View>
     )
 }
@@ -1598,97 +1399,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
-    infoButton: {
+    moreButton: {
         padding: 4,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'transparent',
-        justifyContent: 'flex-end',
-        marginTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0, // Account for status bar
-    },
-    modalWrapper: {
-        width: '100%',
-        height: '50%', // Reduced from 75% to 60%
-        position: 'relative',
-    },
-    modalBlur: {
-        overflow: 'hidden',
-        borderTopLeftRadius: 10,
-        borderTopRightRadius: 10,
-        height: '100%', // Take full height of wrapper
-    },
-    modalContent: {
-        width: '100%',
-        height: '100%', // Take full height
-        paddingTop: 10,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 24, // Account for bottom safe area
-    },
-    modalHandle: {
-        width: 36,
-        height: 5,
-        borderRadius: 2.5,
-        backgroundColor: '#808080',
-        alignSelf: 'center',
-        marginBottom: 24,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        marginBottom: 16,
-        height: 44,
-    },
-    addButton: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-    },
-    addButtonText: {
-        color: '#0A84FF',
-        fontSize: 17,
-        fontWeight: '400',
-    },
-    modalTitle: {
-        fontSize: 17,
-        color: '#FFFFFF',
-        fontWeight: '600',
-    },
-    modalBody: {
-        paddingHorizontal: 16,
-    },
-    metadataRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-    },
-    metadataTextContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginLeft: 12,
-    },
-    metadataLabel: {
-        color: '#FFFFFF',
-        fontSize: 17,
-    },
-    metadataValue: {
-        color: '#8E8E93',
-        fontSize: 17,
-    },
-    modalCloseButton: {
-        marginTop: 8,
-        alignItems: 'center',
-        paddingVertical: 16,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: 'rgba(255, 255, 255, 0.2)',
-    },
-    modalCloseButtonText: {
-        color: '#0A84FF',
-        fontSize: 17,
-        fontWeight: '400',
     },
     loadingOverlay: {
         position: 'absolute',
