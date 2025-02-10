@@ -70,7 +70,13 @@ export function PostRecordingView({
 
             // Wait a brief moment to show the success state before navigating
             const timer = setTimeout(() => {
-                router.push(`/video-editor/${videoProcessing.videoId}`)
+                router.push({
+                    pathname: '/video-editor/[id]',
+                    params: {
+                        id: videoProcessing.videoId!,
+                        referrer: 'post-recording',
+                    },
+                })
             }, 1000)
 
             return () => clearTimeout(timer)

@@ -15,10 +15,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ResizeMode, Video } from 'expo-av'
 import * as FileSystem from 'expo-file-system'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as VideoThumbnails from 'expo-video-thumbnails'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import { useStream } from '@/contexts/recording.context'
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native'
 
 import { supabase } from '@/lib/supabase.client'
@@ -62,6 +63,9 @@ function throttle<T extends (...args: any[]) => any>(
 
 export function VideoEditView({ videoId }: VideoEditViewProps) {
     const router = useRouter()
+    const { referrer } = useLocalSearchParams<{ referrer?: string }>()
+    const isFromPostRecording = referrer === 'post-recording'
+    const { setIsStreaming } = useStream()
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [video, setVideo] = React.useState<VideoMetadata | null>(null)
@@ -73,7 +77,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     const [trimEnd, setTrimEnd] = React.useState(0)
     const [originalTrimStart, setOriginalTrimStart] = React.useState(0)
     const [originalTrimEnd, setOriginalTrimEnd] = React.useState(0)
-    const [hasChanges, setHasChanges] = React.useState(false)
+    const [hasChanges, setHasChanges] = React.useState(isFromPostRecording)
     const trimChangeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const [thumbnailsLoading, setThumbnailsLoading] = React.useState(false)
     const [thumbnails, setThumbnails] = React.useState<string[]>([])
@@ -547,8 +551,43 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
         console.error('🚨 Video loading error:', error)
     }
 
+    // Handle delete video
+    const handleDelete = async () => {
+        if (!video) return
+
+        try {
+            setLoading(true)
+
+            // Delete video file and thumbnail from storage
+            const { error: storageError } = await supabase.storage
+                .from('videos')
+                .remove([`${videoId}/*`])
+
+            if (storageError) throw storageError
+
+            // Delete video record from database
+            const { error: dbError } = await supabase
+                .from('videos')
+                .delete()
+                .eq('id', videoId)
+
+            if (dbError) throw dbError
+
+            setIsStreaming(false) // Reset streaming state
+            router.push('/(protected)/(tabs)/videos')
+        } catch (err) {
+            console.error('Failed to delete video:', err)
+            setError(
+                err instanceof Error ? err.message : 'Failed to delete video',
+            )
+        } finally {
+            setLoading(false)
+        }
+    }
+
     // Replace onClose with router.back()
     const handleCancel = () => {
+        setIsStreaming(false) // Reset streaming state
         router.push('/(protected)/(tabs)/videos')
     }
 
@@ -747,222 +786,548 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                         isLandscape && styles.navBarLandscape,
                     ]}
                 >
-                    <Pressable onPress={handleCancel}>
-                        <Text style={styles.navButton}>Cancel</Text>
-                    </Pressable>
-                    <View style={styles.titleContainer}>
-                        <Text style={styles.navTitle}>Video</Text>
-                        <Pressable
-                            onPress={_event => {
-                                if (moreButtonRef.current) {
-                                    moreButtonRef.current.measure(
-                                        (
-                                            _x,
-                                            _y,
-                                            _width,
-                                            _height,
-                                            pageX,
-                                            pageY,
-                                        ) => {
-                                            setMenuPosition({
-                                                x: pageX,
-                                                y: pageY,
-                                            })
-                                            setShowMenu(true)
-                                        },
-                                    )
-                                }
-                            }}
-                            style={styles.moreButton}
-                            ref={moreButtonRef}
-                        >
-                            <MaterialCommunityIcons
-                                name="dots-horizontal"
-                                size={24}
-                                color="#FFFFFF"
-                            />
-                        </Pressable>
-                    </View>
-                    <Pressable
-                        onPress={async () => {
-                            try {
-                                // Create a temporary directory for the trimmed video
-                                const tempDir = `${FileSystem.cacheDirectory}video-trim-${videoId}/`
-                                await FileSystem.makeDirectoryAsync(tempDir, {
-                                    intermediates: true,
-                                })
-
-                                // Generate output path for trimmed video
-                                const outputPath = `${tempDir}trimmed.mp4`
-
-                                // Show loading state
-                                setLoading(true)
-
-                                // Construct FFmpeg command for trimming
-                                // -ss: start time in seconds
-                                // -t: duration in seconds
-                                // -c copy: copy streams without re-encoding (fast)
-                                // -y: automatically overwrite output file
-                                const command = `-y -ss ${trimStart} -t ${trimEnd - trimStart} -i ${videoUrl} -c copy ${outputPath}`
-
-                                console.log('Starting video trim:', {
-                                    command,
-                                    trimStart,
-                                    trimEnd,
-                                    duration: trimEnd - trimStart,
-                                })
-
-                                // Execute FFmpeg command
-                                const session = await FFmpegKit.execute(command)
-                                const returnCode = await session.getReturnCode()
-
-                                if (ReturnCode.isSuccess(returnCode)) {
-                                    console.log('Video trimmed successfully')
-
-                                    // Verify the output file exists and has content
-                                    const fileInfo =
-                                        await FileSystem.getInfoAsync(
-                                            outputPath,
-                                        )
-                                    if (!fileInfo.exists) {
-                                        throw new Error(
-                                            'Trimmed video file not created',
-                                        )
-                                    }
-
-                                    // Read the file as binary data
-                                    const binaryFile =
-                                        await FileSystem.readAsStringAsync(
-                                            outputPath,
-                                            {
-                                                encoding:
-                                                    FileSystem.EncodingType
-                                                        .Base64,
-                                            },
-                                        )
-
-                                    // Convert base64 to Uint8Array for upload
-                                    const binaryData = Buffer.from(
-                                        binaryFile,
-                                        'base64',
-                                    )
-
-                                    console.log('📊 File info:', {
-                                        exists: fileInfo.exists,
-                                        uri: fileInfo.uri,
-                                        binaryLength: binaryData.length,
-                                        base64Length: binaryFile.length,
-                                    })
-
-                                    if (
-                                        !binaryData ||
-                                        binaryData.length === 0
-                                    ) {
-                                        throw new Error(
-                                            'Failed to read trimmed video file',
-                                        )
-                                    }
-
-                                    const newStoragePath = `${videoId}/trimmed.mp4`
-
-                                    // Upload the binary data
-                                    const { error: uploadError } =
-                                        await supabase.storage
-                                            .from('videos')
-                                            .upload(
-                                                newStoragePath,
-                                                binaryData,
+                    {isFromPostRecording ? (
+                        <>
+                            <Pressable onPress={handleDelete}>
+                                <Text
+                                    style={[
+                                        styles.navButton,
+                                        styles.deleteButton,
+                                    ]}
+                                >
+                                    Delete
+                                </Text>
+                            </Pressable>
+                            <View style={styles.titleContainer}>
+                                <Text style={styles.navTitle}>Video</Text>
+                                <Pressable
+                                    onPress={_event => {
+                                        if (moreButtonRef.current) {
+                                            moreButtonRef.current.measure(
+                                                (
+                                                    _x,
+                                                    _y,
+                                                    _width,
+                                                    _height,
+                                                    pageX,
+                                                    pageY,
+                                                ) => {
+                                                    setMenuPosition({
+                                                        x: pageX,
+                                                        y: pageY,
+                                                    })
+                                                    setShowMenu(true)
+                                                },
+                                            )
+                                        }
+                                    }}
+                                    style={styles.moreButton}
+                                    ref={moreButtonRef}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="dots-horizontal"
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                </Pressable>
+                            </View>
+                            <Pressable
+                                onPress={async () => {
+                                    try {
+                                        // Only proceed with trim if there are actual trim changes
+                                        if (
+                                            trimStart !== originalTrimStart ||
+                                            trimEnd !== originalTrimEnd
+                                        ) {
+                                            // Create a temporary directory for the trimmed video
+                                            const tempDir = `${FileSystem.cacheDirectory}video-trim-${videoId}/`
+                                            await FileSystem.makeDirectoryAsync(
+                                                tempDir,
                                                 {
-                                                    contentType: 'video/mp4',
-                                                    upsert: true,
+                                                    intermediates: true,
                                                 },
                                             )
 
-                                    if (uploadError) {
+                                            // Generate output path for trimmed video
+                                            const outputPath = `${tempDir}trimmed.mp4`
+
+                                            // Show loading state
+                                            setLoading(true)
+
+                                            // Construct FFmpeg command for trimming
+                                            // -ss: start time in seconds
+                                            // -t: duration in seconds
+                                            // -c copy: copy streams without re-encoding (fast)
+                                            // -y: automatically overwrite output file
+                                            const command = `-y -ss ${trimStart} -t ${trimEnd - trimStart} -i ${videoUrl} -c copy ${outputPath}`
+
+                                            console.log(
+                                                'Starting video trim:',
+                                                {
+                                                    command,
+                                                    trimStart,
+                                                    trimEnd,
+                                                    duration:
+                                                        trimEnd - trimStart,
+                                                },
+                                            )
+
+                                            // Execute FFmpeg command
+                                            const session =
+                                                await FFmpegKit.execute(command)
+                                            const returnCode =
+                                                await session.getReturnCode()
+
+                                            if (
+                                                ReturnCode.isSuccess(returnCode)
+                                            ) {
+                                                console.log(
+                                                    'Video trimmed successfully',
+                                                )
+
+                                                // Verify the output file exists and has content
+                                                const fileInfo =
+                                                    await FileSystem.getInfoAsync(
+                                                        outputPath,
+                                                    )
+                                                if (!fileInfo.exists) {
+                                                    throw new Error(
+                                                        'Trimmed video file not created',
+                                                    )
+                                                }
+
+                                                // Read the file as binary data
+                                                const binaryFile =
+                                                    await FileSystem.readAsStringAsync(
+                                                        outputPath,
+                                                        {
+                                                            encoding:
+                                                                FileSystem
+                                                                    .EncodingType
+                                                                    .Base64,
+                                                        },
+                                                    )
+
+                                                // Convert base64 to Uint8Array for upload
+                                                const binaryData = Buffer.from(
+                                                    binaryFile,
+                                                    'base64',
+                                                )
+
+                                                console.log('📊 File info:', {
+                                                    exists: fileInfo.exists,
+                                                    uri: fileInfo.uri,
+                                                    binaryLength:
+                                                        binaryData.length,
+                                                    base64Length:
+                                                        binaryFile.length,
+                                                })
+
+                                                if (
+                                                    !binaryData ||
+                                                    binaryData.length === 0
+                                                ) {
+                                                    throw new Error(
+                                                        'Failed to read trimmed video file',
+                                                    )
+                                                }
+
+                                                const newStoragePath = `${videoId}/trimmed.mp4`
+
+                                                // Upload the binary data
+                                                const { error: uploadError } =
+                                                    await supabase.storage
+                                                        .from('videos')
+                                                        .upload(
+                                                            newStoragePath,
+                                                            binaryData,
+                                                            {
+                                                                contentType:
+                                                                    'video/mp4',
+                                                                upsert: true,
+                                                            },
+                                                        )
+
+                                                if (uploadError) {
+                                                    console.error(
+                                                        'Upload error:',
+                                                        uploadError,
+                                                    )
+                                                    throw uploadError
+                                                }
+
+                                                // Verify the upload by checking the file exists
+                                                const {
+                                                    data: files,
+                                                    error: listError,
+                                                } = await supabase.storage
+                                                    .from('videos')
+                                                    .list(videoId)
+
+                                                if (listError) {
+                                                    throw listError
+                                                }
+
+                                                const uploadedFile = files.find(
+                                                    f =>
+                                                        f.name ===
+                                                        'trimmed.mp4',
+                                                )
+                                                if (!uploadedFile) {
+                                                    throw new Error(
+                                                        'Failed to verify uploaded file',
+                                                    )
+                                                }
+
+                                                console.log(
+                                                    '✅ Upload verified:',
+                                                    {
+                                                        name: uploadedFile.name,
+                                                        size:
+                                                            uploadedFile
+                                                                .metadata
+                                                                ?.size || 0,
+                                                    },
+                                                )
+
+                                                // Update video metadata in database
+                                                const { error: updateError } =
+                                                    await supabase
+                                                        .from('videos')
+                                                        .update({
+                                                            storage_path:
+                                                                newStoragePath,
+                                                            duration:
+                                                                trimEnd -
+                                                                trimStart,
+                                                            trim_start:
+                                                                trimStart,
+                                                            trim_end: trimEnd,
+                                                            updated_at:
+                                                                new Date().toISOString(),
+                                                        })
+                                                        .eq('id', videoId)
+
+                                                if (updateError)
+                                                    throw updateError
+
+                                                // Clean up temporary files
+                                                await FileSystem.deleteAsync(
+                                                    tempDir,
+                                                    {
+                                                        idempotent: true,
+                                                    },
+                                                )
+
+                                                console.log(
+                                                    'Video update complete',
+                                                )
+                                            } else {
+                                                throw new Error(
+                                                    'Failed to trim video',
+                                                )
+                                            }
+                                        }
+                                    } catch (err) {
                                         console.error(
-                                            'Upload error:',
-                                            uploadError,
+                                            'Error trimming video:',
+                                            err,
                                         )
-                                        throw uploadError
-                                    }
-
-                                    // Verify the upload by checking the file exists
-                                    const { data: files, error: listError } =
-                                        await supabase.storage
-                                            .from('videos')
-                                            .list(videoId)
-
-                                    if (listError) {
-                                        throw listError
-                                    }
-
-                                    const uploadedFile = files.find(
-                                        f => f.name === 'trimmed.mp4',
-                                    )
-                                    if (!uploadedFile) {
-                                        throw new Error(
-                                            'Failed to verify uploaded file',
+                                        setError(
+                                            err instanceof Error
+                                                ? err.message
+                                                : 'Failed to trim video',
                                         )
+                                        return // Don't proceed with navigation if there was an error
+                                    } finally {
+                                        setLoading(false)
                                     }
 
-                                    console.log('✅ Upload verified:', {
-                                        name: uploadedFile.name,
-                                        size: uploadedFile.metadata?.size || 0,
-                                    })
+                                    // Always navigate back to videos screen when coming from post-recording
+                                    setIsStreaming(false) // Reset streaming state
+                                    router.push('/(protected)/(tabs)/videos')
+                                }}
+                                disabled={false} // Always enabled for post-recording
+                                style={({ pressed }) => [
+                                    styles.saveButton,
+                                    pressed && styles.saveButtonPressed,
+                                ]}
+                            >
+                                <Text style={styles.navButton}>Save</Text>
+                            </Pressable>
+                        </>
+                    ) : (
+                        <>
+                            <Pressable onPress={handleCancel}>
+                                <Text style={styles.navButton}>Cancel</Text>
+                            </Pressable>
+                            <View style={styles.titleContainer}>
+                                <Text style={styles.navTitle}>Video</Text>
+                                <Pressable
+                                    onPress={_event => {
+                                        if (moreButtonRef.current) {
+                                            moreButtonRef.current.measure(
+                                                (
+                                                    _x,
+                                                    _y,
+                                                    _width,
+                                                    _height,
+                                                    pageX,
+                                                    pageY,
+                                                ) => {
+                                                    setMenuPosition({
+                                                        x: pageX,
+                                                        y: pageY,
+                                                    })
+                                                    setShowMenu(true)
+                                                },
+                                            )
+                                        }
+                                    }}
+                                    style={styles.moreButton}
+                                    ref={moreButtonRef}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="dots-horizontal"
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                </Pressable>
+                            </View>
+                            <Pressable
+                                onPress={async () => {
+                                    try {
+                                        // Only proceed with trim if there are actual trim changes
+                                        if (
+                                            trimStart !== originalTrimStart ||
+                                            trimEnd !== originalTrimEnd
+                                        ) {
+                                            // Create a temporary directory for the trimmed video
+                                            const tempDir = `${FileSystem.cacheDirectory}video-trim-${videoId}/`
+                                            await FileSystem.makeDirectoryAsync(
+                                                tempDir,
+                                                {
+                                                    intermediates: true,
+                                                },
+                                            )
 
-                                    // Update video metadata in database
-                                    const { error: updateError } =
-                                        await supabase
-                                            .from('videos')
-                                            .update({
-                                                storage_path: newStoragePath,
-                                                duration: trimEnd - trimStart,
-                                                trim_start: trimStart,
-                                                trim_end: trimEnd,
-                                                updated_at:
-                                                    new Date().toISOString(),
-                                            })
-                                            .eq('id', videoId)
+                                            // Generate output path for trimmed video
+                                            const outputPath = `${tempDir}trimmed.mp4`
 
-                                    if (updateError) throw updateError
+                                            // Show loading state
+                                            setLoading(true)
 
-                                    // Clean up temporary files
-                                    await FileSystem.deleteAsync(tempDir, {
-                                        idempotent: true,
-                                    })
+                                            // Construct FFmpeg command for trimming
+                                            // -ss: start time in seconds
+                                            // -t: duration in seconds
+                                            // -c copy: copy streams without re-encoding (fast)
+                                            // -y: automatically overwrite output file
+                                            const command = `-y -ss ${trimStart} -t ${trimEnd - trimStart} -i ${videoUrl} -c copy ${outputPath}`
 
-                                    console.log('Video update complete')
-                                } else {
-                                    throw new Error('Failed to trim video')
-                                }
-                            } catch (err) {
-                                console.error('Error trimming video:', err)
-                                setError(
-                                    err instanceof Error
-                                        ? err.message
-                                        : 'Failed to trim video',
-                                )
-                            } finally {
-                                setLoading(false)
-                                router.back()
-                            }
-                        }}
-                        disabled={!hasChanges}
-                        style={({ pressed }) => [
-                            styles.saveButton,
-                            !hasChanges && styles.saveButtonDisabled,
-                            pressed && styles.saveButtonPressed,
-                        ]}
-                    >
-                        <Text
-                            style={[
-                                styles.navButton,
-                                !hasChanges && styles.navButtonDisabled,
-                            ]}
-                        >
-                            Save
-                        </Text>
-                    </Pressable>
+                                            console.log(
+                                                'Starting video trim:',
+                                                {
+                                                    command,
+                                                    trimStart,
+                                                    trimEnd,
+                                                    duration:
+                                                        trimEnd - trimStart,
+                                                },
+                                            )
+
+                                            // Execute FFmpeg command
+                                            const session =
+                                                await FFmpegKit.execute(command)
+                                            const returnCode =
+                                                await session.getReturnCode()
+
+                                            if (
+                                                ReturnCode.isSuccess(returnCode)
+                                            ) {
+                                                console.log(
+                                                    'Video trimmed successfully',
+                                                )
+
+                                                // Verify the output file exists and has content
+                                                const fileInfo =
+                                                    await FileSystem.getInfoAsync(
+                                                        outputPath,
+                                                    )
+                                                if (!fileInfo.exists) {
+                                                    throw new Error(
+                                                        'Trimmed video file not created',
+                                                    )
+                                                }
+
+                                                // Read the file as binary data
+                                                const binaryFile =
+                                                    await FileSystem.readAsStringAsync(
+                                                        outputPath,
+                                                        {
+                                                            encoding:
+                                                                FileSystem
+                                                                    .EncodingType
+                                                                    .Base64,
+                                                        },
+                                                    )
+
+                                                // Convert base64 to Uint8Array for upload
+                                                const binaryData = Buffer.from(
+                                                    binaryFile,
+                                                    'base64',
+                                                )
+
+                                                console.log('📊 File info:', {
+                                                    exists: fileInfo.exists,
+                                                    uri: fileInfo.uri,
+                                                    binaryLength:
+                                                        binaryData.length,
+                                                    base64Length:
+                                                        binaryFile.length,
+                                                })
+
+                                                if (
+                                                    !binaryData ||
+                                                    binaryData.length === 0
+                                                ) {
+                                                    throw new Error(
+                                                        'Failed to read trimmed video file',
+                                                    )
+                                                }
+
+                                                const newStoragePath = `${videoId}/trimmed.mp4`
+
+                                                // Upload the binary data
+                                                const { error: uploadError } =
+                                                    await supabase.storage
+                                                        .from('videos')
+                                                        .upload(
+                                                            newStoragePath,
+                                                            binaryData,
+                                                            {
+                                                                contentType:
+                                                                    'video/mp4',
+                                                                upsert: true,
+                                                            },
+                                                        )
+
+                                                if (uploadError) {
+                                                    console.error(
+                                                        'Upload error:',
+                                                        uploadError,
+                                                    )
+                                                    throw uploadError
+                                                }
+
+                                                // Verify the upload by checking the file exists
+                                                const {
+                                                    data: files,
+                                                    error: listError,
+                                                } = await supabase.storage
+                                                    .from('videos')
+                                                    .list(videoId)
+
+                                                if (listError) {
+                                                    throw listError
+                                                }
+
+                                                const uploadedFile = files.find(
+                                                    f =>
+                                                        f.name ===
+                                                        'trimmed.mp4',
+                                                )
+                                                if (!uploadedFile) {
+                                                    throw new Error(
+                                                        'Failed to verify uploaded file',
+                                                    )
+                                                }
+
+                                                console.log(
+                                                    '✅ Upload verified:',
+                                                    {
+                                                        name: uploadedFile.name,
+                                                        size:
+                                                            uploadedFile
+                                                                .metadata
+                                                                ?.size || 0,
+                                                    },
+                                                )
+
+                                                // Update video metadata in database
+                                                const { error: updateError } =
+                                                    await supabase
+                                                        .from('videos')
+                                                        .update({
+                                                            storage_path:
+                                                                newStoragePath,
+                                                            duration:
+                                                                trimEnd -
+                                                                trimStart,
+                                                            trim_start:
+                                                                trimStart,
+                                                            trim_end: trimEnd,
+                                                            updated_at:
+                                                                new Date().toISOString(),
+                                                        })
+                                                        .eq('id', videoId)
+
+                                                if (updateError)
+                                                    throw updateError
+
+                                                // Clean up temporary files
+                                                await FileSystem.deleteAsync(
+                                                    tempDir,
+                                                    {
+                                                        idempotent: true,
+                                                    },
+                                                )
+
+                                                console.log(
+                                                    'Video update complete',
+                                                )
+                                            } else {
+                                                throw new Error(
+                                                    'Failed to trim video',
+                                                )
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.error(
+                                            'Error trimming video:',
+                                            err,
+                                        )
+                                        setError(
+                                            err instanceof Error
+                                                ? err.message
+                                                : 'Failed to trim video',
+                                        )
+                                        return // Don't proceed with navigation if there was an error
+                                    } finally {
+                                        setLoading(false)
+                                    }
+
+                                    // Always navigate back to videos screen when coming from post-recording
+                                    setIsStreaming(false) // Reset streaming state
+                                    router.push('/(protected)/(tabs)/videos')
+                                }}
+                                disabled={!hasChanges} // Disabled when no changes in normal editing
+                                style={({ pressed }) => [
+                                    styles.saveButton,
+                                    !hasChanges && styles.saveButtonDisabled,
+                                    pressed && styles.saveButtonPressed,
+                                ]}
+                            >
+                                <Text
+                                    style={[
+                                        styles.navButton,
+                                        !hasChanges && styles.navButtonDisabled,
+                                    ]}
+                                >
+                                    Save
+                                </Text>
+                            </Pressable>
+                        </>
+                    )}
                 </View>
 
                 {/* Main Content */}
@@ -1574,7 +1939,7 @@ const styles = StyleSheet.create({
         fontSize: 17,
     },
     deleteButton: {
-        padding: 8,
+        color: '#FF3B30',
     },
     emptyBookmarkList: {
         flex: 1,
