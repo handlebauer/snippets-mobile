@@ -110,7 +110,10 @@ export function useSession() {
                 }))
 
                 // Create a new recording session in the database first
-                if (!(await createSession(code))) {
+                if (!state.sessionType) {
+                    throw new Error('Session type must be set before pairing')
+                }
+                if (!(await createSession(code, state.sessionType))) {
                     throw new Error('Failed to create recording session')
                 }
 

@@ -5,6 +5,11 @@ import { useSupabase } from '@/contexts/supabase.context'
 
 import { supabase } from '@/lib/supabase.client'
 
+import type { Database } from '@/lib/supabase.types'
+
+type RecordingSessionType =
+    Database['public']['Enums']['recording_session_type']
+
 interface SessionCreatorState {
     code: string | null
     isCreating: boolean
@@ -23,7 +28,7 @@ export function useSessionCreator() {
     })
 
     const createSession = useCallback(
-        async (code: string) => {
+        async (code: string, sessionType: RecordingSessionType) => {
             setState(prev => ({ ...prev, isCreating: true, error: null }))
 
             try {
@@ -34,6 +39,8 @@ export function useSessionCreator() {
                         user_id: user.id,
                         code,
                         created_at: new Date().toISOString(),
+                        type: sessionType,
+                        status: 'recording',
                     })
 
                 if (insertError) throw insertError
