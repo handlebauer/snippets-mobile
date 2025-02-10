@@ -38,6 +38,7 @@ interface SessionState {
     // Editor specific
     lastEditorEventTime?: number
     editorEventCount?: number
+    isEditorInitialized: boolean
 }
 
 interface SessionContext {
@@ -57,6 +58,7 @@ export function useSession() {
         streamURL: null,
         statusMessage: null,
         sessionType: null,
+        isEditorInitialized: false,
     })
 
     const context = useRef<SessionContext>({
@@ -100,6 +102,15 @@ export function useSession() {
     // Add editor event handling to channel setup
     const setupEditorEvents = useCallback((channel: RealtimeChannel) => {
         console.log('📝 Setting up editor event handling in useSession')
+
+        // Listen for editor initialization
+        channel.on('broadcast', { event: 'editor_initialized' }, () => {
+            console.log('🎬 Editor initialized')
+            setState(prev => ({
+                ...prev,
+                isEditorInitialized: true,
+            }))
+        })
 
         channel.on('broadcast', { event: 'editor_batch' }, payload => {
             const now = Date.now()
@@ -246,6 +257,7 @@ export function useSession() {
             lastEditorEventTime: undefined,
             editorEventCount: undefined,
             sessionType: null,
+            isEditorInitialized: false,
         }))
     }, [supabase])
 
@@ -280,6 +292,7 @@ export function useSession() {
                 ? {
                       lastEditorEventTime: state.lastEditorEventTime,
                       editorEventCount: state.editorEventCount,
+                      isInitialized: state.isEditorInitialized,
                   }
                 : null,
     }

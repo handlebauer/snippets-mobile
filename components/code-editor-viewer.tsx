@@ -42,6 +42,7 @@ interface CodeEditorViewerProps {
     channel: RealtimeChannel | null
     lastEventTime?: number
     eventCount?: number
+    isEditorInitialized?: boolean
 }
 
 interface CodePreviewProps {
@@ -114,6 +115,7 @@ export function CodeEditorViewer({
     channel,
     lastEventTime,
     eventCount,
+    isEditorInitialized,
 }: CodeEditorViewerProps) {
     const [content, setContent] = React.useState('')
 
@@ -152,20 +154,33 @@ export function CodeEditorViewer({
             })
         }
 
-        // Listen for editor events but don't subscribe
-        const subscription = channel.on(
+        const handleEditorInitialized = (payload: {
+            payload: { content: string; timestamp: number }
+        }) => {
+            setContent(payload.payload.content)
+        }
+
+        // Listen for editor events and initialization
+        const eventSubscription = channel.on(
             'broadcast',
             { event: 'editor_batch' },
             handleEditorBatch,
         )
 
+        const initSubscription = channel.on(
+            'broadcast',
+            { event: 'editor_initialized' },
+            handleEditorInitialized,
+        )
+
         return () => {
-            subscription.unsubscribe()
+            eventSubscription.unsubscribe()
+            initSubscription.unsubscribe()
         }
     }, [channel])
 
-    // If we've received events, show the code preview
-    if (lastEventTime) {
+    // Show code preview if editor is initialized or we've received events
+    if (isEditorInitialized || lastEventTime) {
         return <CodePreview content={content} />
     }
 

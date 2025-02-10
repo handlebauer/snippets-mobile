@@ -81,6 +81,7 @@ export default function Index() {
                         channel={screenSession.channel?.current}
                         lastEventTime={editorState?.lastEditorEventTime}
                         eventCount={editorState?.editorEventCount}
+                        isEditorInitialized={editorState?.isInitialized}
                     />
                 </View>
             )
