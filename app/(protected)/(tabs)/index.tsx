@@ -107,14 +107,8 @@ export default function Index() {
     return (
         <View style={[styles.container, styles.centered]}>
             <View style={styles.card}>
-                <MaterialCommunityIcons
-                    name="record-circle-outline"
-                    size={48}
-                    color="#FFFFFF"
-                    style={styles.icon}
-                />
                 <Text variant="titleLarge" style={styles.title}>
-                    New Recording
+                    New Coding Session
                 </Text>
                 <Text variant="bodyLarge" style={styles.description}>
                     Choose a recording type to get started
@@ -131,11 +125,12 @@ export default function Index() {
                             <MaterialCommunityIcons
                                 name="monitor"
                                 size={20}
+                                marginRight={5}
                                 color="#FFFFFF"
                             />
                         )}
                     >
-                        Screen Recording
+                        Screen
                     </Button>
                     <Button
                         mode="contained"
@@ -148,11 +143,12 @@ export default function Index() {
                             <MaterialCommunityIcons
                                 name="code-braces"
                                 size={20}
+                                marginRight={5}
                                 color="#FFFFFF"
                             />
                         )}
                     >
-                        Code Editor
+                        Editor
                     </Button>
                 </View>
             </View>
@@ -195,7 +191,8 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     button: {
-        width: '100%',
+        width: '80%',
+        margin: 'auto',
     },
     buttonContent: {
         height: 48,

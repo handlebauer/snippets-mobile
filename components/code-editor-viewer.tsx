@@ -180,7 +180,7 @@ export function CodeEditorViewer({
             statusMessage={statusMessage}
             onReset={onReset}
             icon="code-braces"
-            title="Connect to Code Editor"
+            title="Connect to Editor"
             description={description}
         />
     )

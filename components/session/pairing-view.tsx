@@ -123,7 +123,9 @@ export function PairingView({
                                 Enter this code at:
                             </Text>
                         </View>
-                        <Text style={styles.url}>https://snippet.is</Text>
+                        <Text style={styles.url}>
+                            snippets-connect.vercel.app
+                        </Text>
 
                         {statusMessage === STATUS_MESSAGES.ENDED && (
                             <Button

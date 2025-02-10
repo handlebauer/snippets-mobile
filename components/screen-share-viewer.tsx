@@ -241,7 +241,7 @@ export function ScreenShareViewer({
                             />
                             <Text variant="titleLarge" style={styles.subtitle}>
                                 {effectiveState.sessionType === 'code_editor'
-                                    ? 'Connect to Code Editor'
+                                    ? 'Connect to Editor'
                                     : 'Record Your Screen'}
                             </Text>
                             <Text
