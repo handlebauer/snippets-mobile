@@ -30,7 +30,7 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
     const theme = useTheme()
-    const { isStreaming } = useStream()
+    const { isStreaming, isEditing } = useStream()
 
     return (
         <Tabs
@@ -39,7 +39,7 @@ export default function TabLayout() {
                 tabBarInactiveTintColor: '#666666',
                 headerShown: false,
                 tabBarStyle: {
-                    display: isStreaming ? 'none' : 'flex',
+                    display: isStreaming || isEditing ? 'none' : 'flex',
                     height: 75,
                     backgroundColor: 'transparent',
                     borderTopColor: 'transparent',
