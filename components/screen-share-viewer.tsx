@@ -17,9 +17,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { PostRecordingView } from '@/components/post-recording-view'
 import { RecordingTimer } from '@/components/recording-timer'
-import { STATUS_MESSAGES } from '@/constants/webrtc'
 import { useStream } from '@/contexts/recording.context'
 
+import { PairingView } from '@/components/session/pairing-view'
 import { useRecordButton } from '@/hooks/use-record-button'
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
@@ -187,11 +187,6 @@ export function ScreenShareViewer({
         return () => spinAnimation.stop()
     }, [effectiveState.statusMessage, spinValue])
 
-    const spin = spinValue.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '360deg'],
-    })
-
     // Log video processing state changes
     React.useEffect(() => {
         if (state.videoProcessing) {
@@ -246,16 +241,16 @@ export function ScreenShareViewer({
                             />
                             <Text variant="titleLarge" style={styles.subtitle}>
                                 {effectiveState.sessionType === 'code_editor'
-                                    ? 'Code Editor Session'
-                                    : 'Screen Recording Session'}
+                                    ? 'Connect to Code Editor'
+                                    : 'Record Your Screen'}
                             </Text>
                             <Text
                                 variant="bodyLarge"
                                 style={styles.description}
                             >
                                 {effectiveState.sessionType === 'code_editor'
-                                    ? 'Start a new code editing session'
-                                    : 'Start a new recording session'}
+                                    ? 'Launch a new code editor session'
+                                    : 'Start a new screen recording'}
                             </Text>
                             <Button
                                 mode="contained"
@@ -345,89 +340,13 @@ export function ScreenShareViewer({
     }
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <View style={styles.container}>
-                <View style={styles.contentContainer}>
-                    <View style={styles.card}>
-                        <MaterialCommunityIcons
-                            name="laptop"
-                            size={48}
-                            color="#FFFFFF"
-                            style={styles.icon}
-                        />
-                        <Text variant="titleLarge" style={styles.subtitle}>
-                            Your Pairing Code
-                        </Text>
-                        <View style={styles.codeContainer}>
-                            <Text
-                                variant="headlineLarge"
-                                style={styles.codeText}
-                            >
-                                {effectiveState.sessionCode}
-                            </Text>
-                            {effectiveState.statusMessage && (
-                                <View style={styles.statusContainer}>
-                                    {effectiveState.statusMessage ===
-                                    'Web client connected' ? (
-                                        <MaterialCommunityIcons
-                                            name="check-circle"
-                                            size={14}
-                                            color="#22C55E"
-                                        />
-                                    ) : (
-                                        <Animated.View
-                                            style={{
-                                                transform: [{ rotate: spin }],
-                                            }}
-                                        >
-                                            <MaterialCommunityIcons
-                                                name="loading"
-                                                size={14}
-                                                color="#CCCCCC"
-                                            />
-                                        </Animated.View>
-                                    )}
-                                    <Text
-                                        style={[
-                                            styles.statusText,
-                                            effectiveState.statusMessage ===
-                                                'Web client connected' &&
-                                                styles.statusTextSuccess,
-                                        ]}
-                                    >
-                                        {effectiveState.statusMessage}
-                                    </Text>
-                                </View>
-                            )}
-                        </View>
-
-                        <View style={styles.urlContainer}>
-                            <MaterialCommunityIcons
-                                name="link"
-                                size={20}
-                                color="#CCCCCC"
-                            />
-                            <Text style={styles.urlText}>
-                                Enter this code at:
-                            </Text>
-                        </View>
-                        <Text style={styles.url}>https://snippet.is</Text>
-
-                        {effectiveState.statusMessage ===
-                            STATUS_MESSAGES.ENDED && (
-                            <Button
-                                mode="outlined"
-                                onPress={onReset}
-                                style={styles.button}
-                                contentStyle={styles.buttonContent}
-                            >
-                                New Session
-                            </Button>
-                        )}
-                    </View>
-                </View>
-            </View>
-        </SafeAreaView>
+        <PairingView
+            sessionCode={effectiveState.sessionCode}
+            statusMessage={effectiveState.statusMessage}
+            onReset={onReset}
+            icon="laptop"
+            title="Record Your Screen"
+        />
     )
 }
 

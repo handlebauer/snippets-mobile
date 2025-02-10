@@ -36,8 +36,8 @@ interface SessionState {
     // Screen recording specific
     videoProcessing?: VideoProcessingSignal
     // Editor specific
-    content?: string
-    isInitialContentSet?: boolean
+    lastEditorEventTime?: number
+    editorEventCount?: number
 }
 
 interface SessionContext {
@@ -97,6 +97,32 @@ export function useSession() {
     //     }))
     // }, [])
 
+    // Add editor event handling to channel setup
+    const setupEditorEvents = useCallback((channel: RealtimeChannel) => {
+        console.log('📝 Setting up editor event handling in useSession')
+
+        channel.on('broadcast', { event: 'editor_batch' }, payload => {
+            const now = Date.now()
+            console.log('📝 Received editor batch:', {
+                timestamp_start: new Date(
+                    payload.payload.timestamp_start,
+                ).toISOString(),
+                timestamp_end: new Date(
+                    payload.payload.timestamp_end,
+                ).toISOString(),
+                received_at: new Date(now).toISOString(),
+                event_count: payload.payload.events.length,
+                first_event_type: payload.payload.events[0]?.type,
+            })
+
+            setState(prev => ({
+                ...prev,
+                lastEditorEventTime: now,
+                editorEventCount: (prev.editorEventCount || 0) + 1,
+            }))
+        })
+    }, [])
+
     const handlePairDevice = useCallback(
         async (pairingCode?: string) => {
             try {
@@ -126,6 +152,11 @@ export function useSession() {
                     code,
                     handleVideoProcessing,
                 )
+
+                // Set up editor events if needed
+                if (state.sessionType === 'code_editor') {
+                    setupEditorEvents(channel.current)
+                }
 
                 // Update state to reflect successful connection
                 setState(prev => ({
@@ -176,7 +207,13 @@ export function useSession() {
                 }))
             }
         },
-        [supabase, handleVideoProcessing, createSession, state.sessionType],
+        [
+            supabase,
+            handleVideoProcessing,
+            createSession,
+            state.sessionType,
+            setupEditorEvents,
+        ],
     )
 
     const cleanup = useCallback(() => {
@@ -206,8 +243,8 @@ export function useSession() {
             sessionCode: null,
             statusMessage: null,
             videoProcessing: undefined,
-            content: undefined,
-            isInitialContentSet: false,
+            lastEditorEventTime: undefined,
+            editorEventCount: undefined,
             sessionType: null,
         }))
     }, [supabase])
@@ -241,8 +278,8 @@ export function useSession() {
         editor:
             state.sessionType === 'code_editor'
                 ? {
-                      content: state.content,
-                      isInitialContentSet: state.isInitialContentSet,
+                      lastEditorEventTime: state.lastEditorEventTime,
+                      editorEventCount: state.editorEventCount,
                   }
                 : null,
     }

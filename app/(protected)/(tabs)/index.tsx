@@ -4,6 +4,7 @@ import { Button, Text } from 'react-native-paper'
 
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import { CodeEditorViewer } from '@/components/code-editor-viewer'
 import { GitHubConnectionPrompt } from '@/components/github-connection-prompt'
 import { ScreenShareViewer } from '@/components/screen-share-viewer'
 
@@ -16,7 +17,7 @@ type RecordingSessionType =
     Database['public']['Enums']['recording_session_type']
 
 export default function Index() {
-    const { screen: screenSession, setSessionType } = useSession()
+    const { screen: screenSession, editor, setSessionType } = useSession()
     const { isConnected, isLoading, isConnecting, connectGitHub } =
         useGitHubConnection()
     const [selectedType, setSelectedType] =
@@ -66,6 +67,25 @@ export default function Index() {
     }
 
     if (screenSession.state.sessionCode) {
+        if (selectedType === 'code_editor') {
+            const editorState = editor
+            return (
+                <View style={styles.container}>
+                    <CodeEditorViewer
+                        sessionCode={screenSession.state.sessionCode}
+                        statusMessage={screenSession.state.statusMessage}
+                        onReset={() => {
+                            screenSession.resetState()
+                            setSelectedType(null)
+                        }}
+                        channel={screenSession.channel?.current}
+                        lastEventTime={editorState?.lastEditorEventTime}
+                        eventCount={editorState?.editorEventCount}
+                    />
+                </View>
+            )
+        }
+
         return (
             <View style={styles.container}>
                 <ScreenShareViewer
