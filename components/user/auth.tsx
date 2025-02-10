@@ -169,9 +169,61 @@ export function Auth() {
                     ]}
                     textColor="white"
                     buttonColor="#3797EF"
-                    style={styles.buttonReset}
+                    style={[styles.buttonReset]}
                 >
                     {isSignUp ? 'Sign up' : 'Log in'}
+                </Button>
+
+                <View style={styles.signupContainer}>
+                    <Text
+                        variant="bodyMedium"
+                        style={{ color: theme.colors.onSurfaceVariant }}
+                    >
+                        {isSignUp
+                            ? 'Already have an account?'
+                            : "Don't have an account?"}{' '}
+                    </Text>
+                    <Button
+                        mode="text"
+                        compact
+                        onPress={() => {
+                            setIsSignUp(!isSignUp)
+                            setUsername('')
+                            setEmail('')
+                            setPassword('')
+                        }}
+                        textColor="#3797EF"
+                    >
+                        {isSignUp ? 'Log in' : 'Sign up'}
+                    </Button>
+                </View>
+
+                <View style={styles.dividerContainer}>
+                    <View style={styles.divider} />
+                    <Text style={styles.dividerText}>or</Text>
+                    <View style={styles.divider} />
+                </View>
+
+                <Button
+                    mode="outlined"
+                    onPress={async () => {
+                        try {
+                            await signInWithPassword('asdf@asdf.com', 'asdf')
+                            router.replace('/(protected)/(tabs)')
+                        } catch (error) {
+                            if (error instanceof Error)
+                                Alert.alert(error.message)
+                        }
+                    }}
+                    contentStyle={styles.button}
+                    style={[
+                        styles.buttonReset,
+                        { marginTop: 15, borderColor: '#9e9e9e' },
+                    ]}
+                    textColor="#9e9e9e"
+                    icon="account-outline"
+                >
+                    Continue as Guest
                 </Button>
 
                 {/* Commenting out OAuth buttons
@@ -220,30 +272,6 @@ export function Auth() {
                 </View>
                 */}
 
-                <View style={styles.signupContainer}>
-                    <Text
-                        variant="bodyMedium"
-                        style={{ color: theme.colors.onSurfaceVariant }}
-                    >
-                        {isSignUp
-                            ? 'Already have an account?'
-                            : "Don't have an account?"}{' '}
-                    </Text>
-                    <Button
-                        mode="text"
-                        compact
-                        onPress={() => {
-                            setIsSignUp(!isSignUp)
-                            setUsername('')
-                            setEmail('')
-                            setPassword('')
-                        }}
-                        textColor="#3797EF"
-                    >
-                        {isSignUp ? 'Log in' : 'Sign up'}
-                    </Button>
-                </View>
-
                 {/* {!isSignUp && (
                     <Button
                         mode="text"
@@ -279,7 +307,7 @@ const styles = StyleSheet.create({
     formContainer: {
         height: 148,
         justifyContent: 'flex-end',
-        marginBottom: 8,
+        marginBottom: 16,
         marginTop: 32,
     },
     input: {
@@ -289,7 +317,7 @@ const styles = StyleSheet.create({
     },
     buttonContainer: {
         flex: 0.2,
-        paddingTop: 8,
+        marginTop: -8,
     },
     button: {
         height: 44,
@@ -304,7 +332,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 32,
+        marginTop: 0,
     },
     forgotButton: {},
     appleButton: {
@@ -318,18 +346,19 @@ const styles = StyleSheet.create({
     dividerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 24,
+        marginTop: 5,
+        marginBottom: 0,
     },
     divider: {
         flex: 1,
         height: 1,
-        backgroundColor: '#dbdbdb',
+        backgroundColor: '#333',
     },
     dividerText: {
         marginHorizontal: 16,
-        color: '#737373',
-        fontSize: 12,
-        fontWeight: '600',
+        color: '#666',
+        fontSize: 14,
+        fontWeight: '400',
     },
     oauthButtonsContainer: {
         gap: 12,
