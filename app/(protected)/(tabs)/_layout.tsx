@@ -20,7 +20,7 @@ function TabBarIcon(props: {
 
     return (
         <MaterialCommunityIcons
-            size={32}
+            size={26}
             style={styles.tabBarIcon}
             name={isActive ? props.activeIcon : props.name}
             color={props.color}
@@ -41,7 +41,6 @@ export default function TabLayout() {
                 tabBarStyle: {
                     display: isStreaming ? 'none' : 'flex',
                     height: 75,
-                    paddingBottom: 25,
                     backgroundColor: 'transparent',
                     borderTopColor: 'transparent',
                     position: 'absolute',
