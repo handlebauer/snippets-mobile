@@ -1,15 +1,16 @@
 import React from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import CodeHighlighter from 'react-native-code-highlighter'
 import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { atomOneDarkReasonable } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 
-import { MaterialCommunityIcons } from '@expo/vector-icons'
-
+import { RecordingTimer } from '@/components/recording-timer'
 import { useStream } from '@/contexts/recording.context'
 
 import { PairingView } from '@/components/session/pairing-view'
+import { useRecordButton } from '@/hooks/use-record-button'
+import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
@@ -47,10 +48,97 @@ interface CodeEditorViewerProps {
 
 interface CodePreviewProps {
     content: string
+    channel: RealtimeChannel | null
 }
 
-function CodePreview({ content }: CodePreviewProps) {
-    const { setIsEditing } = useStream()
+function CodePreview({ content, channel }: CodePreviewProps) {
+    const { setIsEditing, setRecordingStartTime, isRecording, setIsRecording } =
+        useStream()
+    const { isLandscape } = useScreenOrientation()
+    const { innerStyle, handleRecordPress: onRecordButtonPress } =
+        useRecordButton({
+            isRecording,
+            onRecordPress: (_recording: boolean) => {
+                if (!channel) {
+                    console.error('Cannot record: no active channel')
+                    return
+                }
+
+                // Toggle recording state
+                const newIsRecording = !isRecording
+                setIsRecording(newIsRecording)
+
+                // Update recording start time
+                setRecordingStartTime(newIsRecording ? Date.now() : null)
+
+                // Send recording control signal through the channel
+                console.log('📤 Sending recording control signal:', {
+                    action: newIsRecording ? 'start' : 'stop',
+                })
+
+                channel
+                    .send({
+                        type: 'broadcast',
+                        event: newIsRecording
+                            ? 'editor_recording_started'
+                            : 'editor_recording_finished',
+                        payload: {
+                            timestamp: Date.now(),
+                            content: content,
+                        },
+                    })
+                    .then(() => {
+                        console.log(
+                            '✅ Recording control signal sent successfully',
+                        )
+                    })
+                    .catch(error => {
+                        console.error(
+                            '❌ Failed to send recording control signal:',
+                            error,
+                        )
+                    })
+            },
+        })
+
+    // Listen for recording events from the web app
+    React.useEffect(() => {
+        if (!channel) return
+
+        const handleRecordingStarted = (payload: {
+            payload: { timestamp: number; content: string }
+        }) => {
+            console.log('📥 Received recording started signal')
+            setIsRecording(true)
+            setRecordingStartTime(payload.payload.timestamp)
+        }
+
+        const handleRecordingFinished = (_payload: {
+            payload: { timestamp: number; content: string }
+        }) => {
+            console.log('📥 Received recording finished signal')
+            setIsRecording(false)
+            setRecordingStartTime(null)
+        }
+
+        // Subscribe to both start and finish events
+        const startSubscription = channel.on(
+            'broadcast',
+            { event: 'editor_recording_started' },
+            handleRecordingStarted,
+        )
+
+        const finishSubscription = channel.on(
+            'broadcast',
+            { event: 'editor_recording_finished' },
+            handleRecordingFinished,
+        )
+
+        return () => {
+            startSubscription.unsubscribe()
+            finishSubscription.unsubscribe()
+        }
+    }, [channel, setRecordingStartTime, setIsRecording])
 
     // Set isEditing to true when component mounts, false when unmounts
     React.useEffect(() => {
@@ -60,16 +148,7 @@ function CodePreview({ content }: CodePreviewProps) {
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <View style={styles.header}>
-                <MaterialCommunityIcons
-                    name="code-braces"
-                    size={24}
-                    color="#FFFFFF"
-                />
-                <Text variant="titleMedium" style={styles.headerText}>
-                    Code Preview
-                </Text>
-            </View>
+            <RecordingTimer />
             <ScrollView
                 style={styles.codeContainer}
                 contentContainerStyle={styles.codeContent}
@@ -104,6 +183,21 @@ function CodePreview({ content }: CodePreviewProps) {
                     </Text>
                 )}
             </ScrollView>
+            <View
+                style={[
+                    styles.recordButtonContainer,
+                    isLandscape && styles.recordButtonContainerLandscape,
+                ]}
+            >
+                <View style={styles.recordButton}>
+                    <Animated.View style={innerStyle}>
+                        <Pressable
+                            onPress={onRecordButtonPress}
+                            style={StyleSheet.absoluteFill}
+                        />
+                    </Animated.View>
+                </View>
+            </View>
         </SafeAreaView>
     )
 }
@@ -181,7 +275,7 @@ export function CodeEditorViewer({
 
     // Show code preview if editor is initialized or we've received events
     if (isEditorInitialized || lastEventTime) {
-        return <CodePreview content={content} />
+        return <CodePreview content={content} channel={channel} />
     }
 
     // Otherwise show the pairing view
@@ -228,5 +322,29 @@ const styles = StyleSheet.create({
     },
     codeText: {
         color: '#CCCCCC',
+    },
+    recordButtonContainer: {
+        position: 'absolute',
+        bottom: 24,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    recordButtonContainerLandscape: {
+        bottom: 'auto',
+        left: 24,
+        width: 'auto',
+        height: '100%',
+        justifyContent: 'center',
+    },
+    recordButton: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 4,
+        borderColor: '#FFFFFF',
     },
 })

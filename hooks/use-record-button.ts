@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Animated } from 'react-native'
 
 interface UseRecordButtonResult {
@@ -14,30 +14,30 @@ interface UseRecordButtonResult {
 
 interface UseRecordButtonOptions {
     onRecordPress: (isRecording: boolean) => void
+    isRecording: boolean
 }
 
 export function useRecordButton({
     onRecordPress,
+    isRecording,
 }: UseRecordButtonOptions): UseRecordButtonResult {
-    const [isRecording, setIsRecording] = useState(false)
     const recordingAnimation = useRef(new Animated.Value(0)).current
 
-    const handleRecordPress = useCallback(() => {
-        const newIsRecording = !isRecording
-        setIsRecording(newIsRecording)
-
-        // Animate the button
+    // Update animation when isRecording changes
+    useEffect(() => {
         Animated.spring(recordingAnimation, {
-            toValue: newIsRecording ? 1 : 0,
+            toValue: isRecording ? 1 : 0,
             useNativeDriver: false,
             damping: 25,
             stiffness: 300,
             mass: 0.5,
         }).start()
+    }, [isRecording, recordingAnimation])
 
+    const handleRecordPress = useCallback(() => {
         // Call the handler with the new state
-        onRecordPress(newIsRecording)
-    }, [isRecording, recordingAnimation, onRecordPress])
+        onRecordPress(!isRecording)
+    }, [isRecording, onRecordPress])
 
     const innerStyle = {
         width: recordingAnimation.interpolate({

@@ -160,13 +160,11 @@ export function ScreenShareViewer({
         [effectiveState.sessionCode, channel, setRecordingStartTime],
     )
 
-    const {
-        // isRecording,
-        innerStyle,
-        handleRecordPress: onRecordButtonPress,
-    } = useRecordButton({
-        onRecordPress: handleRecordPress,
-    })
+    const { innerStyle, handleRecordPress: onRecordButtonPress } =
+        useRecordButton({
+            onRecordPress: handleRecordPress,
+            isRecording: state.isRecording ?? false,
+        })
 
     React.useEffect(() => {
         const spinAnimation = Animated.loop(

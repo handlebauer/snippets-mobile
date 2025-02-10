@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { RTCIceCandidate, RTCPeerConnection } from 'react-native-webrtc'
 
 import { STATUS_MESSAGES } from '@/constants/webrtc'
+import { useStream } from '@/contexts/recording.context'
 import { useSupabase } from '@/contexts/supabase.context'
 
 import { useSessionCreator } from '@/hooks/use-session-creator'
@@ -51,6 +52,7 @@ interface SessionContext {
 export function useSession() {
     const { supabase } = useSupabase()
     const { createSession } = useSessionCreator()
+    const { setIsRecording, setRecordingStartTime } = useStream()
     const [state, setState] = useState<SessionState>({
         isPairing: false,
         sessionCode: null,
@@ -100,39 +102,72 @@ export function useSession() {
     // }, [])
 
     // Add editor event handling to channel setup
-    const setupEditorEvents = useCallback((channel: RealtimeChannel) => {
-        console.log('📝 Setting up editor event handling in useSession')
+    const setupEditorEvents = useCallback(
+        (channel: RealtimeChannel) => {
+            console.log('📝 Setting up editor event handling in useSession')
 
-        // Listen for editor initialization
-        channel.on('broadcast', { event: 'editor_initialized' }, () => {
-            console.log('🎬 Editor initialized')
-            setState(prev => ({
-                ...prev,
-                isEditorInitialized: true,
-            }))
-        })
-
-        channel.on('broadcast', { event: 'editor_batch' }, payload => {
-            const now = Date.now()
-            console.log('📝 Received editor batch:', {
-                timestamp_start: new Date(
-                    payload.payload.timestamp_start,
-                ).toISOString(),
-                timestamp_end: new Date(
-                    payload.payload.timestamp_end,
-                ).toISOString(),
-                received_at: new Date(now).toISOString(),
-                event_count: payload.payload.events.length,
-                first_event_type: payload.payload.events[0]?.type,
+            // Listen for editor initialization
+            channel.on('broadcast', { event: 'editor_initialized' }, () => {
+                console.log('🎬 Editor initialized')
+                setState(prev => ({
+                    ...prev,
+                    isEditorInitialized: true,
+                }))
             })
 
-            setState(prev => ({
-                ...prev,
-                lastEditorEventTime: now,
-                editorEventCount: (prev.editorEventCount || 0) + 1,
-            }))
-        })
-    }, [])
+            channel.on('broadcast', { event: 'editor_batch' }, payload => {
+                const now = Date.now()
+                console.log('📝 Received editor batch:', {
+                    timestamp_start: new Date(
+                        payload.payload.timestamp_start,
+                    ).toISOString(),
+                    timestamp_end: new Date(
+                        payload.payload.timestamp_end,
+                    ).toISOString(),
+                    received_at: new Date(now).toISOString(),
+                    event_count: payload.payload.events.length,
+                    first_event_type: payload.payload.events[0]?.type,
+                })
+
+                setState(prev => ({
+                    ...prev,
+                    lastEditorEventTime: now,
+                    editorEventCount: (prev.editorEventCount || 0) + 1,
+                }))
+            })
+
+            // Listen for recording start
+            channel.on(
+                'broadcast',
+                { event: 'editor_recording_started' },
+                () => {
+                    console.log('🎥 Editor recording started')
+                    setIsRecording(true)
+                    setRecordingStartTime(Date.now())
+                    setState(prev => ({
+                        ...prev,
+                        statusMessage: 'Recording in progress...',
+                    }))
+                },
+            )
+
+            // Listen for recording finish
+            channel.on(
+                'broadcast',
+                { event: 'editor_recording_finished' },
+                () => {
+                    console.log('🎬 Editor recording finished')
+                    setIsRecording(false)
+                    setRecordingStartTime(null)
+                    setState(prev => ({
+                        ...prev,
+                        statusMessage: 'Recording finished',
+                    }))
+                },
+            )
+        },
+        [setIsRecording, setRecordingStartTime],
+    )
 
     const handlePairDevice = useCallback(
         async (pairingCode?: string) => {
