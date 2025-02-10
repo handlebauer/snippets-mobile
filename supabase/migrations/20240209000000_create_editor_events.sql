@@ -21,7 +21,7 @@ create table public.editor_snapshots (
     id uuid default gen_random_uuid() primary key,
     session_id uuid references public.recording_sessions(id) on delete cascade not null,
     event_index integer not null,
-    timestamp bigint not null,
+    "timestamp" bigint not null,
     content text not null,
     metadata jsonb, -- Store additional metadata like isKeyFrame, description, etc.
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -35,7 +35,7 @@ create index editor_snapshots_session_event_idx
     on public.editor_snapshots (session_id, event_index);
 
 create index editor_snapshots_session_time_idx 
-    on public.editor_snapshots (session_id, timestamp);
+    on public.editor_snapshots (session_id, "timestamp");
 
 -- Enable RLS
 alter table public.editor_event_batches enable row level security;
@@ -194,7 +194,7 @@ grant execute on function public.store_editor_event_batch to authenticated;
 create or replace function public.store_editor_snapshot(
     pairing_code text,
     event_index integer,
-    timestamp bigint,
+    "timestamp" bigint,
     content text,
     metadata jsonb
 )
@@ -227,14 +227,14 @@ begin
     insert into editor_snapshots (
         session_id,
         event_index,
-        timestamp,
+        "timestamp",
         content,
         metadata,
         created_at
     ) values (
         session_record.id,
         event_index,
-        timestamp,
+        "timestamp",
         content,
         metadata,
         now()
