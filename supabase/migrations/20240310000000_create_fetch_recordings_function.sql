@@ -93,10 +93,10 @@ begin
             ) is null then null
             else (
                 with cleaned_content as (
-                    -- Remove empty lines and leading/trailing whitespace
+                    -- Keep empty lines and preserve whitespace
                     select array_to_string(
                         array(
-                            select trim(line)
+                            select line
                             from regexp_split_to_table(
                                 (
                                     select content
@@ -107,8 +107,7 @@ begin
                                 ),
                                 E'\n'
                             ) as line
-                            where trim(line) != ''
-                            limit 10  -- Take first 10 non-empty lines
+                            limit 10  -- Take first 10 lines
                         ),
                         E'\n'
                     ) as content
