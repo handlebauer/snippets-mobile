@@ -78,6 +78,7 @@ export function EditorEditView({
     const [currentTime, setCurrentTime] = React.useState(0)
     const [isPlaying, setIsPlaying] = React.useState(false)
     const [duration, setDuration] = React.useState(0)
+    const [durationMs, setDurationMs] = React.useState(0)
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const playbackRef = React.useRef<NodeJS.Timeout | null>(null)
@@ -178,14 +179,16 @@ export function EditorEditView({
         if (events.length > 0) {
             const firstEvent = events[0]
             const lastEvent = events[events.length - 1]
-            const calculatedDuration =
-                (lastEvent.timestamp - firstEvent.timestamp) / 1000 // Convert to seconds
+            const rawDurationMs = lastEvent.timestamp - firstEvent.timestamp
+            const calculatedDuration = rawDurationMs / 1000 // Convert to seconds for UI
             console.log('⏱️ Calculating duration:', {
                 firstEventTime: firstEvent.timestamp,
                 lastEventTime: lastEvent.timestamp,
+                rawDurationMs,
                 calculatedDuration,
                 eventCount: events.length,
             })
+            setDurationMs(rawDurationMs)
             setDuration(calculatedDuration)
             setTrimEnd(calculatedDuration)
             setOriginalTrimStart(0)
@@ -502,19 +505,17 @@ export function EditorEditView({
         try {
             setLoading(true)
 
-            console.log({ code })
-
-            // Update the session status to 'saved' regardless of changes
-            const { error: statusError } = await supabase.rpc(
-                'update_session_status',
+            // Finalize the recording session with duration
+            const { error: finalizeError } = await supabase.rpc(
+                'finalize_recording_session',
                 {
                     pairing_code: code,
-                    new_status: 'saved',
+                    duration_ms: durationMs,
                 },
             )
 
-            if (statusError) {
-                throw statusError
+            if (finalizeError) {
+                throw finalizeError
             }
 
             // Only process event changes if there are actual changes
@@ -569,6 +570,7 @@ export function EditorEditView({
         setIsEditing,
         code,
         getTrimmedEvents,
+        durationMs,
     ])
 
     if (error) {

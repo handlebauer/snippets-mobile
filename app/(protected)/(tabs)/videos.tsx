@@ -5,7 +5,7 @@ import { Text } from 'react-native-paper'
 import { useRouter } from 'expo-router'
 
 import { RecordingList } from '@/components/video-list'
-import { isVideoRecording } from '@/types/recordings'
+import { isEditorRecording, isVideoRecording } from '@/types/recordings'
 
 import { useVideos } from '@/hooks/use-videos'
 
@@ -14,6 +14,26 @@ import type { RecordingMetadata } from '@/types/recordings'
 export default function VideosScreen() {
     const router = useRouter()
     const { videos: recordings, loading, error, refetch } = useVideos()
+
+    // Add debug logging
+    React.useEffect(() => {
+        if (recordings.length > 0) {
+            console.log('🎥 All recordings:', recordings)
+
+            // Log editor recordings specifically
+            const editorRecordings = recordings.filter(isEditorRecording)
+            console.log('📝 Editor recordings:', editorRecordings)
+
+            if (editorRecordings.length > 0) {
+                const firstEditor = editorRecordings[0]
+                console.log('First editor recording details:', {
+                    thumbnail_code: firstEditor.thumbnail_code,
+                    initial_content: firstEditor.initial_content,
+                    type: firstEditor.type,
+                })
+            }
+        }
+    }, [recordings])
 
     const handleEditRecording = (recording: RecordingMetadata) => {
         if (isVideoRecording(recording)) {

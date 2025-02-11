@@ -89,5 +89,53 @@ exception
 end;
 $$;
 
+-- Add new function for finalizing a recording
+create or replace function public.finalize_recording_session(pairing_code text, duration_ms bigint)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    session_record record;
+begin
+    -- Input validation
+    if pairing_code is null or pairing_code = '' then
+        raise exception 'Pairing code is required';
+    end if;
+
+    if duration_ms is null then
+        raise exception 'Duration is required';
+    end if;
+
+    -- Get the session record
+    select * into session_record
+    from recording_sessions
+    where code = pairing_code;
+
+    if not found then
+        raise exception 'Session not found for pairing code: %', pairing_code;
+    end if;
+
+    -- Update the session status and duration
+    update recording_sessions
+    set 
+        status = 'saved',
+        duration_ms = finalize_recording_session.duration_ms
+    where code = pairing_code;
+
+    -- Return success response
+    return json_build_object(
+        'success', true,
+        'message', 'Recording session finalized successfully',
+        'session_id', session_record.id,
+        'duration_ms', duration_ms
+    );
+exception
+    when others then
+        raise exception 'Error in finalize_recording_session: % (SQLSTATE: %)', SQLERRM, SQLSTATE;
+end;
+$$;
+
 -- Grant execute permission to authenticated users
-grant execute on function public.update_session_status to authenticated; 
+grant execute on function public.finalize_recording_session to authenticated; 

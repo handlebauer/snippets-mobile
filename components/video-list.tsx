@@ -89,16 +89,6 @@ function RecordingGridItem({ recording, onPress }: RecordingGridItemProps) {
                     style={styles.gradientOverlay}
                 >
                     <View style={styles.recordingInfo}>
-                        <MaterialCommunityIcons
-                            name={
-                                isVideoRecording(recording)
-                                    ? 'video'
-                                    : 'code-braces'
-                            }
-                            size={16}
-                            color="#FFFFFF"
-                            style={styles.typeIcon}
-                        />
                         <Text style={styles.duration}>
                             {formatDuration(durationInSeconds)}
                         </Text>

@@ -82,8 +82,41 @@ begin
             order by event_index desc
             limit 1
         ) as final_content,
-        -- Take first 200 chars of initial content as thumbnail code
-        substring(rs.initial_content, 1, 200) as thumbnail_code
+        -- Generate a clean thumbnail code from final content
+        case
+            when (
+                select content
+                from editor_snapshots es
+                where es.session_id = rs.id
+                order by event_index desc
+                limit 1
+            ) is null then null
+            else (
+                with cleaned_content as (
+                    -- Remove empty lines and leading/trailing whitespace
+                    select array_to_string(
+                        array(
+                            select trim(line)
+                            from regexp_split_to_table(
+                                (
+                                    select content
+                                    from editor_snapshots es
+                                    where es.session_id = rs.id
+                                    order by event_index desc
+                                    limit 1
+                                ),
+                                E'\n'
+                            ) as line
+                            where trim(line) != ''
+                            limit 10  -- Take first 10 non-empty lines
+                        ),
+                        E'\n'
+                    ) as content
+                )
+                select substring(content, 1, 500)  -- Limit to 500 chars for thumbnail
+                from cleaned_content
+            )
+        end as thumbnail_code
     from recording_sessions rs
     where rs.user_id = profile_id_param
     and rs.type = 'code_editor'
