@@ -5,6 +5,8 @@ import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { atomOneDarkReasonable } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 
+import { useRouter } from 'expo-router'
+
 import { RecordingTimer } from '@/components/recording-timer'
 import { useStream } from '@/contexts/recording.context'
 
@@ -23,7 +25,7 @@ interface EditorEvent {
     to: number
     text: string
     removed?: string
-    metadabta?: {
+    metadata?: {
         isSignificant?: boolean
         changeSize?: number
         description?: string
@@ -49,12 +51,107 @@ interface CodeEditorViewerProps {
 interface CodePreviewProps {
     content: string
     channel: RealtimeChannel | null
+    sessionCode: string | null
 }
 
-function CodePreview({ content, channel }: CodePreviewProps) {
-    const { setIsEditing, setRecordingStartTime, isRecording, setIsRecording } =
-        useStream()
+function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
+    const {
+        setIsEditing,
+        setRecordingStartTime,
+        isRecording,
+        setIsRecording,
+        recordingStartTime,
+    } = useStream()
     const { isLandscape } = useScreenOrientation()
+    const [recordedEvents, setRecordedEvents] = React.useState<EditorEvent[]>(
+        [],
+    )
+    const router = useRouter()
+
+    // Keep recording state in a ref to avoid effect recreation
+    const recordingStateRef = React.useRef({ isRecording, recordingStartTime })
+
+    // Update ref when recording state changes
+    React.useEffect(() => {
+        recordingStateRef.current = { isRecording, recordingStartTime }
+    }, [isRecording, recordingStartTime])
+
+    // Debug all channel messages
+    React.useEffect(() => {
+        if (!channel) return
+
+        console.log('🎥 Setting up channel debug logging')
+        const debugSubscription = channel.on(
+            'broadcast',
+            { event: '*' },
+            payload => {
+                console.log('📡 Channel message:', {
+                    event: payload.event,
+                    type: payload.type,
+                    payload: payload.payload,
+                })
+            },
+        )
+
+        return () => {
+            console.log('🎬 Cleaning up debug subscription')
+            debugSubscription.unsubscribe()
+        }
+    }, [channel])
+
+    // Set up event recording as soon as possible
+    React.useEffect(() => {
+        if (!channel) return
+
+        console.log('🎥 Setting up event recording')
+        const handleEditorBatch = (payload: {
+            payload: EditorBatch
+            event: string
+        }) => {
+            const batch = payload.payload
+            const { isRecording, recordingStartTime } =
+                recordingStateRef.current
+
+            console.log('📥 Received editor batch:', {
+                event: payload.event,
+                batchSize: batch.events.length,
+                timeStart: batch.timestamp_start,
+                timeEnd: batch.timestamp_end,
+                isRecording,
+                recordingStartTime,
+            })
+
+            // Only record events if we're recording
+            if (isRecording && recordingStartTime) {
+                const relativeEvents = batch.events.map(event => ({
+                    ...event,
+                    timestamp: event.timestamp - recordingStartTime,
+                }))
+                console.log('📝 Adding events to recording:', {
+                    count: relativeEvents.length,
+                    firstEvent: relativeEvents[0],
+                    lastEvent: relativeEvents[relativeEvents.length - 1],
+                })
+                setRecordedEvents(prev => [...prev, ...relativeEvents])
+            }
+        }
+
+        // Set up a single stable subscription that lasts as long as the channel
+        const subscription = channel.on(
+            'broadcast',
+            { event: 'editor_batch' },
+            handleEditorBatch,
+        )
+
+        return () => {
+            // Only cleanup if the channel itself is changing
+            console.log(
+                '🎬 Cleaning up event recording subscription (channel changed)',
+            )
+            subscription.unsubscribe()
+        }
+    }, [channel]) // Only recreate subscription when channel changes
+
     const { innerStyle, handleRecordPress: onRecordButtonPress } =
         useRecordButton({
             isRecording,
@@ -68,12 +165,42 @@ function CodePreview({ content, channel }: CodePreviewProps) {
                 const newIsRecording = !isRecording
                 setIsRecording(newIsRecording)
 
-                // Update recording start time
-                setRecordingStartTime(newIsRecording ? Date.now() : null)
+                if (newIsRecording) {
+                    // Start recording
+                    const startTime = Date.now()
+                    console.log('🎬 Starting recording at:', startTime)
+                    setRecordingStartTime(startTime)
+                    setRecordedEvents([]) // Clear previous events
+                } else {
+                    // Stop recording and transition to edit view
+                    setRecordingStartTime(null)
+                    console.log('📼 Recorded events:', {
+                        count: recordedEvents.length,
+                        events: recordedEvents,
+                        firstEvent: recordedEvents[0],
+                        lastEvent: recordedEvents[recordedEvents.length - 1],
+                    })
+
+                    // Only navigate if we have events
+                    if (recordedEvents.length > 0) {
+                        router.push({
+                            pathname: '/(protected)/editor-edit',
+                            params: {
+                                events: JSON.stringify(recordedEvents),
+                                initialContent: content,
+                            },
+                        })
+                    } else {
+                        console.warn(
+                            '⚠️ No events recorded, skipping navigation',
+                        )
+                    }
+                }
 
                 // Send recording control signal through the channel
                 console.log('📤 Sending recording control signal:', {
                     action: newIsRecording ? 'start' : 'stop',
+                    sessionCode,
                 })
 
                 channel
@@ -85,60 +212,22 @@ function CodePreview({ content, channel }: CodePreviewProps) {
                         payload: {
                             timestamp: Date.now(),
                             content: content,
+                            sessionCode: sessionCode,
                         },
                     })
-                    .then(() => {
+                    .then(() =>
                         console.log(
                             '✅ Recording control signal sent successfully',
-                        )
-                    })
-                    .catch(error => {
+                        ),
+                    )
+                    .catch(error =>
                         console.error(
                             '❌ Failed to send recording control signal:',
                             error,
-                        )
-                    })
+                        ),
+                    )
             },
         })
-
-    // Listen for recording events from the web app
-    React.useEffect(() => {
-        if (!channel) return
-
-        const handleRecordingStarted = (payload: {
-            payload: { timestamp: number; content: string }
-        }) => {
-            console.log('📥 Received recording started signal')
-            setIsRecording(true)
-            setRecordingStartTime(payload.payload.timestamp)
-        }
-
-        const handleRecordingFinished = (_payload: {
-            payload: { timestamp: number; content: string }
-        }) => {
-            console.log('📥 Received recording finished signal')
-            setIsRecording(false)
-            setRecordingStartTime(null)
-        }
-
-        // Subscribe to both start and finish events
-        const startSubscription = channel.on(
-            'broadcast',
-            { event: 'editor_recording_started' },
-            handleRecordingStarted,
-        )
-
-        const finishSubscription = channel.on(
-            'broadcast',
-            { event: 'editor_recording_finished' },
-            handleRecordingFinished,
-        )
-
-        return () => {
-            startSubscription.unsubscribe()
-            finishSubscription.unsubscribe()
-        }
-    }, [channel, setRecordingStartTime, setIsRecording])
 
     // Set isEditing to true when component mounts, false when unmounts
     React.useEffect(() => {
@@ -275,7 +364,13 @@ export function CodeEditorViewer({
 
     // Show code preview if editor is initialized or we've received events
     if (isEditorInitialized || lastEventTime) {
-        return <CodePreview content={content} channel={channel} />
+        return (
+            <CodePreview
+                content={content}
+                channel={channel}
+                sessionCode={sessionCode}
+            />
+        )
     }
 
     // Otherwise show the pairing view

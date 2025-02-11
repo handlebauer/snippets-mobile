@@ -7,6 +7,8 @@ interface StreamContextType {
     setIsEditing: (isEditing: boolean) => void
     isRecording: boolean
     setIsRecording: (isRecording: boolean) => void
+    isScreenRecording: boolean
+    setIsScreenRecording: (isRecording: boolean) => void
     recordingStartTime: number | null
     setRecordingStartTime: (time: number | null) => void
     recordingDuration: string
@@ -19,6 +21,8 @@ export const StreamContext = React.createContext<StreamContextType>({
     setIsEditing: () => {},
     isRecording: false,
     setIsRecording: () => {},
+    isScreenRecording: false,
+    setIsScreenRecording: () => {},
     recordingStartTime: null,
     setRecordingStartTime: () => {},
     recordingDuration: '00:00',
@@ -28,6 +32,7 @@ export function StreamProvider({ children }: { children: React.ReactNode }) {
     const [isStreaming, setIsStreaming] = React.useState(false)
     const [isEditing, setIsEditing] = React.useState(false)
     const [isRecording, setIsRecording] = React.useState(false)
+    const [isScreenRecording, setIsScreenRecording] = React.useState(false)
     const [recordingStartTime, setRecordingStartTime] = React.useState<
         number | null
     >(null)
@@ -62,6 +67,8 @@ export function StreamProvider({ children }: { children: React.ReactNode }) {
                 setIsEditing,
                 isRecording,
                 setIsRecording,
+                isScreenRecording,
+                setIsScreenRecording,
                 recordingStartTime,
                 setRecordingStartTime,
                 recordingDuration,

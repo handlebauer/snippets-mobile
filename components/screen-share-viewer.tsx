@@ -51,7 +51,12 @@ export function ScreenShareViewer({
     onReset,
     channel,
 }: ScreenShareViewerProps) {
-    const { setIsStreaming, setRecordingStartTime } = useStream()
+    const {
+        setIsStreaming,
+        setRecordingStartTime,
+        isScreenRecording,
+        setIsScreenRecording,
+    } = useStream()
     const { isLandscape, lockToPortrait, unlockOrientation } =
         useScreenOrientation()
     const spinValue = React.useRef(new Animated.Value(0)).current
@@ -129,8 +134,9 @@ export function ScreenShareViewer({
                 return
             }
 
-            // Update recording start time
+            // Update recording start time and state
             setRecordingStartTime(isRecording ? Date.now() : null)
+            setIsScreenRecording(isRecording)
 
             // Send recording control signal through the existing channel
             console.log('📤 Sending recording control signal:', {
@@ -157,13 +163,18 @@ export function ScreenShareViewer({
                     )
                 })
         },
-        [effectiveState.sessionCode, channel, setRecordingStartTime],
+        [
+            effectiveState.sessionCode,
+            channel,
+            setRecordingStartTime,
+            setIsScreenRecording,
+        ],
     )
 
     const { innerStyle, handleRecordPress: onRecordButtonPress } =
         useRecordButton({
             onRecordPress: handleRecordPress,
-            isRecording: state.isRecording ?? false,
+            isRecording: isScreenRecording,
         })
 
     React.useEffect(() => {
