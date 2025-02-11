@@ -52,17 +52,28 @@ interface EditorEditViewProps {
 }
 
 export function EditorEditView({
-    events,
+    events: initialEvents,
     finalContent,
     initialState,
     onClose,
     isFromRecordingSession = false,
     code,
 }: EditorEditViewProps) {
+    console.log('📝 EditorEditView mounted with props:', {
+        hasEvents: Array.isArray(initialEvents) && initialEvents.length > 0,
+        eventCount: initialEvents?.length,
+        hasFinalContent: !!finalContent,
+        hasInitialState: !!initialState,
+        code,
+    })
+
     const router = useRouter()
     const { isLandscape } = useScreenOrientation()
     const { setIsStreaming, setIsEditing } = useStream()
     const { supabase } = useSupabase()
+    const [events, setEvents] = React.useState<EditorEvent[]>(
+        initialEvents || [],
+    )
     const [content, setContent] = React.useState('')
     const [currentTime, setCurrentTime] = React.useState(0)
     const [isPlaying, setIsPlaying] = React.useState(false)
@@ -85,6 +96,62 @@ export function EditorEditView({
     const [hasChanges, setHasChanges] = React.useState(false)
     const [isTrimming, setIsTrimming] = React.useState(false)
     const trimChangeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+
+    // Fetch events when component mounts
+    React.useEffect(() => {
+        async function fetchEvents() {
+            if (!code) return
+
+            try {
+                console.log('🔄 Fetching events for session:', { code })
+                setLoading(true)
+
+                // First get the session ID
+                const { data: sessionData, error: sessionError } =
+                    await supabase
+                        .from('recording_sessions')
+                        .select('id')
+                        .eq('code', code)
+                        .single()
+
+                if (sessionError) throw sessionError
+                if (!sessionData) throw new Error('Session not found')
+
+                // Then fetch events using session ID
+                const { data, error } = await supabase
+                    .from('editor_event_batches')
+                    .select('events')
+                    .eq('session_id', sessionData.id)
+                    .order('created_at', { ascending: true })
+
+                if (error) throw error
+
+                if (data && data.length > 0) {
+                    // Combine all event batches into a single array
+                    const allEvents = data.flatMap(batch => batch.events)
+                    console.log('✅ Fetched events:', {
+                        batchCount: data.length,
+                        totalEvents: allEvents.length,
+                    })
+                    setEvents(allEvents)
+                }
+            } catch (err) {
+                console.error('❌ Failed to fetch events:', err)
+                setError(
+                    err instanceof Error
+                        ? err.message
+                        : 'Failed to fetch events',
+                )
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        // Only fetch if we don't have events already
+        if (events.length === 0) {
+            fetchEvents()
+        }
+    }, [code, supabase, events.length])
 
     // Initialize with initial state on mount
     React.useEffect(() => {
@@ -517,6 +584,48 @@ export function EditorEditView({
         )
     }
 
+    // Render loading state with header
+    if (loading || events.length === 0) {
+        return (
+            <View style={styles.root}>
+                <StatusBar
+                    translucent={true}
+                    backgroundColor="transparent"
+                    barStyle="light-content"
+                    hidden={isLandscape}
+                />
+                <SafeAreaView
+                    style={styles.safeArea}
+                    edges={isLandscape ? ['left', 'right'] : ['top']}
+                >
+                    {/* Header */}
+                    <View
+                        style={[
+                            styles.navBar,
+                            isLandscape && styles.navBarLandscape,
+                        ]}
+                    >
+                        <Pressable onPress={onClose}>
+                            <Text style={styles.navButton}>Close</Text>
+                        </Pressable>
+                        <View style={styles.titleContainer}>
+                            <Text style={styles.navTitle}>Code</Text>
+                        </View>
+                        <View style={styles.placeholderButton} />
+                    </View>
+
+                    {/* Loading State */}
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#FFFFFF" />
+                        <Text style={styles.loadingText}>
+                            Loading recording...
+                        </Text>
+                    </View>
+                </SafeAreaView>
+            </View>
+        )
+    }
+
     return (
         <View style={styles.root}>
             <StatusBar
@@ -599,7 +708,7 @@ export function EditorEditView({
                     ) : (
                         <>
                             <Pressable onPress={onClose}>
-                                <Text style={styles.navButton}>Cancel</Text>
+                                <Text style={styles.navButton}>Close</Text>
                             </Pressable>
                             <View style={styles.titleContainer}>
                                 <Text style={styles.navTitle}>Code</Text>
@@ -636,21 +745,12 @@ export function EditorEditView({
                             </View>
                             <Pressable
                                 onPress={handleSave}
-                                disabled={!hasChanges}
                                 style={({ pressed }) => [
                                     styles.saveButton,
-                                    !hasChanges && styles.saveButtonDisabled,
                                     pressed && styles.saveButtonPressed,
                                 ]}
                             >
-                                <Text
-                                    style={[
-                                        styles.navButton,
-                                        !hasChanges && styles.navButtonDisabled,
-                                    ]}
-                                >
-                                    Save
-                                </Text>
+                                <Text style={styles.navButton}>Save</Text>
                             </Pressable>
                         </>
                     )}
@@ -1057,5 +1157,14 @@ const styles = StyleSheet.create({
     },
     deleteButton: {
         color: '#FF3B30',
+    },
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#121212',
+    },
+    placeholderButton: {
+        width: 60, // Match the width of the Save button
     },
 })

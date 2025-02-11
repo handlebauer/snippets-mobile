@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react'
 
 import { supabase } from '@/lib/supabase.client'
 
-import type { VideoMetadata } from '@/types/webrtc'
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import type { RecordingMetadata } from '@/types/recordings'
 
 export function useVideos() {
-    const [videos, setVideos] = useState<VideoMetadata[]>([])
+    const [recordings, setRecordings] = useState<RecordingMetadata[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    const fetchVideos = async () => {
+    const fetchRecordings = async () => {
         try {
             const {
                 data: { user },
@@ -20,19 +19,22 @@ export function useVideos() {
                 return
             }
 
-            const { data, error } = await supabase
-                .from('videos')
-                .select('*')
-                .eq('profile_id', user.id)
-                .order('created_at', { ascending: false })
+            const { data, error } = await supabase.rpc(
+                'fetch_user_recordings',
+                {
+                    profile_id_param: user.id,
+                },
+            )
 
             if (error) throw error
-            setVideos(data || [])
+            setRecordings(data || [])
             setError(null)
         } catch (err) {
-            console.error('Error fetching videos:', err)
+            console.error('Error fetching recordings:', err)
             setError(
-                err instanceof Error ? err.message : 'Failed to fetch videos',
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to fetch recordings',
             )
         } finally {
             setLoading(false)
@@ -40,74 +42,49 @@ export function useVideos() {
     }
 
     useEffect(() => {
-        fetchVideos()
+        fetchRecordings()
 
-        // Set up realtime subscription
-        const channel = supabase
+        // Set up realtime subscription for both videos and recording sessions
+        const videosChannel = supabase
             .channel('videos_changes')
             .on(
                 'postgres_changes',
                 {
-                    event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+                    event: '*',
                     schema: 'public',
                     table: 'videos',
                 },
-                async (
-                    payload: RealtimePostgresChangesPayload<VideoMetadata>,
-                ) => {
-                    console.log('📼 Realtime video update:', payload)
-
-                    // Fetch the current user to filter changes
-                    const {
-                        data: { user },
-                    } = await supabase.auth.getUser()
-                    if (!user) return
-
-                    // Only process changes for the current user's videos
-                    if (
-                        payload.new &&
-                        'profile_id' in payload.new &&
-                        payload.new.profile_id === user.id
-                    ) {
-                        switch (payload.eventType) {
-                            case 'INSERT':
-                                setVideos(prev => [
-                                    payload.new as VideoMetadata,
-                                    ...prev,
-                                ])
-                                break
-                            case 'UPDATE':
-                                setVideos(prev =>
-                                    prev.map(video =>
-                                        video.id === payload.new.id
-                                            ? { ...video, ...payload.new }
-                                            : video,
-                                    ),
-                                )
-                                break
-                            case 'DELETE':
-                                setVideos(prev =>
-                                    prev.filter(
-                                        video => video.id !== payload.old.id,
-                                    ),
-                                )
-                                break
-                        }
-                    }
+                () => {
+                    fetchRecordings()
                 },
             )
             .subscribe()
 
-        // Cleanup subscription on unmount
+        const recordingsChannel = supabase
+            .channel('recordings_changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'recording_sessions',
+                },
+                () => {
+                    fetchRecordings()
+                },
+            )
+            .subscribe()
+
         return () => {
-            supabase.removeChannel(channel)
+            supabase.removeChannel(videosChannel)
+            supabase.removeChannel(recordingsChannel)
         }
     }, [])
 
     return {
-        videos,
+        videos: recordings,
         loading,
         error,
-        refetch: fetchVideos,
+        refetch: fetchRecordings,
     }
 }

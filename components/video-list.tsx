@@ -6,6 +6,7 @@ import {
     Modal,
     Pressable,
     RefreshControl,
+    StatusBar,
     StyleSheet,
     View,
 } from 'react-native'
@@ -17,9 +18,12 @@ import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import { isVideoRecording } from '@/types/recordings'
+
+import { EditorThumbnail } from './editor-thumbnail'
 import { VideoFilterList } from './video-filter-list'
 
-import type { VideoMetadata } from '@/types/webrtc'
+import type { RecordingMetadata } from '@/types/recordings'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const COLUMN_COUNT = 3
@@ -27,30 +31,35 @@ const GRID_SPACING = 1
 const ITEM_WIDTH =
     (SCREEN_WIDTH - (COLUMN_COUNT - 1) * GRID_SPACING) / COLUMN_COUNT
 
-interface VideoListProps {
-    videos: VideoMetadata[]
+interface RecordingListProps {
+    recordings: RecordingMetadata[]
     onRefresh: () => void
-    onEditVideo: (videoId: string) => void
+    onEditRecording: (recording: RecordingMetadata) => void
 }
 
-interface VideoGridItemProps {
-    video: VideoMetadata
+interface RecordingGridItemProps {
+    recording: RecordingMetadata
     onPress: () => void
 }
 
-function VideoGridItem({ video, onPress }: VideoGridItemProps) {
-    const formatDuration = (seconds: number | null) => {
-        if (!seconds) return ''
+function RecordingGridItem({ recording, onPress }: RecordingGridItemProps) {
+    const formatDuration = (durationInSeconds: number | null) => {
+        if (!durationInSeconds) return ''
 
-        const hours = Math.floor(seconds / 3600)
-        const minutes = Math.floor((seconds % 3600) / 60)
-        const remainingSeconds = Math.floor(seconds % 60)
+        const hours = Math.floor(durationInSeconds / 3600)
+        const minutes = Math.floor((durationInSeconds % 3600) / 60)
+        const remainingSeconds = Math.floor(durationInSeconds % 60)
 
         if (hours > 0) {
             return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
         }
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
     }
+
+    // Get duration in seconds, handling both video and editor types
+    const durationInSeconds = isVideoRecording(recording)
+        ? recording.duration
+        : recording.duration_ms / 1000
 
     return (
         <Animated.View
@@ -59,20 +68,39 @@ function VideoGridItem({ video, onPress }: VideoGridItemProps) {
             style={styles.gridItem}
         >
             <Pressable onPress={onPress} style={styles.gridItemPressable}>
-                <Image
-                    source={{
-                        uri: video.thumbnail_url || 'placeholder_image_url',
-                    }}
-                    style={styles.thumbnail}
-                    resizeMode="cover"
-                />
+                {isVideoRecording(recording) ? (
+                    <Image
+                        source={{
+                            uri:
+                                recording.thumbnail_url ||
+                                'placeholder_image_url',
+                        }}
+                        style={styles.thumbnail}
+                        resizeMode="cover"
+                    />
+                ) : (
+                    <EditorThumbnail
+                        thumbnailCode={recording.thumbnail_code}
+                        style={styles.thumbnail}
+                    />
+                )}
                 <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.8)']}
                     style={styles.gradientOverlay}
                 >
-                    <View style={styles.videoInfo}>
+                    <View style={styles.recordingInfo}>
+                        <MaterialCommunityIcons
+                            name={
+                                isVideoRecording(recording)
+                                    ? 'video'
+                                    : 'code-braces'
+                            }
+                            size={16}
+                            color="#FFFFFF"
+                            style={styles.typeIcon}
+                        />
                         <Text style={styles.duration}>
-                            {formatDuration(video.duration)}
+                            {formatDuration(durationInSeconds)}
                         </Text>
                     </View>
                 </LinearGradient>
@@ -81,7 +109,11 @@ function VideoGridItem({ video, onPress }: VideoGridItemProps) {
     )
 }
 
-export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
+export function RecordingList({
+    recordings,
+    onRefresh,
+    onEditRecording,
+}: RecordingListProps) {
     const insets = useSafeAreaInsets()
     const [refreshing, setRefreshing] = React.useState(false)
     const [selectedRepo, setSelectedRepo] = React.useState<string | null>(null)
@@ -94,15 +126,15 @@ export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
         setRefreshing(false)
     }, [onRefresh])
 
-    // Get unique list of repos from videos, sorted by most recent video
+    // Get unique list of repos from recordings, sorted by most recent
     const repos = React.useMemo(() => {
         const repoMap = new Map<string, Date>()
-        videos.forEach(video => {
-            if (video.linked_repo && video.created_at) {
-                const date = new Date(video.created_at)
-                const existingDate = repoMap.get(video.linked_repo)
+        recordings.forEach(recording => {
+            if (recording.linked_repo && recording.created_at) {
+                const date = new Date(recording.created_at)
+                const existingDate = repoMap.get(recording.linked_repo)
                 if (!existingDate || date > existingDate) {
-                    repoMap.set(video.linked_repo, date)
+                    repoMap.set(recording.linked_repo, date)
                 }
             }
         })
@@ -111,42 +143,80 @@ export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
             .map(([repo]) => repo)
 
         return sortedRepos
-    }, [videos])
+    }, [recordings])
 
-    // Filter videos based on selected repo
-    const filteredVideos = React.useMemo(() => {
-        if (!selectedRepo) return videos
-        return videos.filter(v => v.linked_repo === selectedRepo)
-    }, [videos, selectedRepo])
+    // Filter recordings based on selected repo
+    const filteredRecordings = React.useMemo(() => {
+        if (!selectedRepo) return recordings
+        return recordings.filter(r => r.linked_repo === selectedRepo)
+    }, [recordings, selectedRepo])
 
     const renderItem = React.useCallback(
-        ({ item: video }: { item: VideoMetadata }) => (
-            <VideoGridItem
-                video={video}
-                onPress={() => onEditVideo(video.id)}
+        ({ item: recording }: { item: RecordingMetadata }) => (
+            <RecordingGridItem
+                recording={recording}
+                onPress={() => onEditRecording(recording)}
             />
         ),
-        [onEditVideo],
+        [onEditRecording],
     )
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Videos</Text>
-                <Pressable
-                    onPress={() => setShowFilter(true)}
-                    style={({ pressed }) => [
-                        styles.filterButton,
-                        pressed && styles.filterButtonPressed,
-                    ]}
-                >
-                    <MaterialCommunityIcons
-                        name={selectedRepo ? 'filter' : 'filter-outline'}
-                        size={24}
-                        color="#FFFFFF"
-                    />
-                </Pressable>
-            </View>
+        <View style={styles.root}>
+            <StatusBar barStyle="light-content" backgroundColor="#121212" />
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>My Recordings</Text>
+                    <Pressable
+                        onPress={() => setShowFilter(true)}
+                        style={({ pressed }) => [
+                            styles.filterButton,
+                            pressed && styles.filterButtonPressed,
+                        ]}
+                    >
+                        <MaterialCommunityIcons
+                            name={selectedRepo ? 'filter' : 'filter-outline'}
+                            size={24}
+                            color="#FFFFFF"
+                        />
+                    </Pressable>
+                </View>
+
+                <FlatList
+                    data={filteredRecordings}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id}
+                    numColumns={COLUMN_COUNT}
+                    contentContainerStyle={styles.gridContainer}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            tintColor="#FFFFFF"
+                        />
+                    }
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <MaterialCommunityIcons
+                                name="video-off"
+                                size={48}
+                                color="#666666"
+                            />
+                            <Text style={styles.emptyText}>
+                                {selectedRepo
+                                    ? `No recordings for ${selectedRepo}`
+                                    : 'No recordings yet'}
+                            </Text>
+                            <Text style={styles.emptySubtext}>
+                                {selectedRepo
+                                    ? 'Try selecting a different repository'
+                                    : 'Your recordings will appear here'}
+                            </Text>
+                        </View>
+                    }
+                />
+            </SafeAreaView>
 
             <Modal
                 visible={showFilter}
@@ -184,7 +254,7 @@ export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
                         </View>
 
                         <VideoFilterList
-                            videos={videos}
+                            videos={recordings}
                             repos={repos}
                             selectedRepo={selectedRepo}
                             searchQuery={searchQuery}
@@ -197,46 +267,15 @@ export function VideoList({ videos, onRefresh, onEditVideo }: VideoListProps) {
                     </BlurView>
                 </View>
             </Modal>
-
-            <FlatList
-                data={filteredVideos}
-                renderItem={renderItem}
-                keyExtractor={item => item.id}
-                numColumns={COLUMN_COUNT}
-                contentContainerStyle={styles.gridContainer}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={handleRefresh}
-                        tintColor="#FFFFFF"
-                    />
-                }
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <MaterialCommunityIcons
-                            name="video-off"
-                            size={48}
-                            color="#666666"
-                        />
-                        <Text style={styles.emptyText}>
-                            {selectedRepo
-                                ? `No videos for ${selectedRepo}`
-                                : 'No videos yet'}
-                        </Text>
-                        <Text style={styles.emptySubtext}>
-                            {selectedRepo
-                                ? 'Try selecting a different repository'
-                                : 'Your recorded videos will appear here'}
-                        </Text>
-                    </View>
-                }
-            />
-        </SafeAreaView>
+        </View>
     )
 }
 
 const styles = StyleSheet.create({
+    root: {
+        flex: 1,
+        backgroundColor: '#121212',
+    },
     safeArea: {
         flex: 1,
         backgroundColor: '#121212',
@@ -247,11 +286,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
+        backgroundColor: '#121212',
+        borderBottomWidth: 0,
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
         color: '#FFFFFF',
+        flex: 1,
     },
     addButton: {
         margin: 0,
@@ -282,10 +324,17 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         padding: 8,
     },
-    videoInfo: {
+    recordingInfo: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         alignItems: 'center',
+    },
+    typeIcon: {
+        marginRight: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.5,
+        shadowRadius: 2,
     },
     duration: {
         color: '#FFFFFF',
@@ -315,7 +364,10 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     filterButton: {
-        padding: 8,
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
         borderRadius: 8,
     },
     filterButtonPressed: {

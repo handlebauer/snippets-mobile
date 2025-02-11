@@ -297,8 +297,12 @@ export function ScreenShareViewer({
                     ]}
                     onPress={() => {
                         // First stop any ongoing recording
-                        handleRecordPress(false)
-                        // Then reset the session
+                        if (isScreenRecording) {
+                            handleRecordPress(false)
+                        }
+                        // Then reset the session and unlock orientation
+                        lockToPortrait()
+                        setIsStreaming(false) // Ensure tab bar reappears
                         onReset()
                     }}
                 >
