@@ -249,6 +249,7 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
                                     recordingStateRef.current.initialContent ||
                                     '',
                                 isFromRecordingSession: 'true',
+                                code: sessionCode || '',
                             },
                         })
                     } else {

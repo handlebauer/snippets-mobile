@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { useStream } from '@/contexts/recording.context'
+import { useSupabase } from '@/contexts/supabase.context'
 
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
@@ -47,6 +48,7 @@ interface EditorEditViewProps {
     initialState: string
     onClose: () => void
     isFromRecordingSession?: boolean
+    code: string
 }
 
 export function EditorEditView({
@@ -55,10 +57,12 @@ export function EditorEditView({
     initialState,
     onClose,
     isFromRecordingSession = false,
+    code,
 }: EditorEditViewProps) {
     const router = useRouter()
     const { isLandscape } = useScreenOrientation()
     const { setIsStreaming, setIsEditing } = useStream()
+    const { supabase } = useSupabase()
     const [content, setContent] = React.useState('')
     const [currentTime, setCurrentTime] = React.useState(0)
     const [isPlaying, setIsPlaying] = React.useState(false)
@@ -387,12 +391,66 @@ export function EditorEditView({
         }))
     }, [events, trimStart, trimEnd])
 
-    // Handle save
+    // Add delete handler
+    const handleDelete = React.useCallback(async () => {
+        try {
+            setLoading(true)
+
+            // Update the session status to 'deleted'
+            const { error } = await supabase.rpc('update_session_status', {
+                pairing_code: code,
+                new_status: 'deleted',
+            })
+
+            if (error) {
+                throw error
+            }
+
+            if (isFromRecordingSession) {
+                setIsStreaming(false) // Reset streaming state
+                setIsEditing(false) // Reset editing state
+                router.push('/(protected)/(tabs)')
+            } else {
+                onClose()
+            }
+        } catch (err) {
+            console.error('Failed to delete session:', err)
+            setError(
+                err instanceof Error ? err.message : 'Failed to delete session',
+            )
+        } finally {
+            setLoading(false)
+        }
+    }, [
+        isFromRecordingSession,
+        router,
+        onClose,
+        setIsStreaming,
+        setIsEditing,
+        code,
+    ])
+
+    // Update handleSave
     const handleSave = React.useCallback(async () => {
         try {
             setLoading(true)
 
-            // Only process if there are actual changes
+            console.log({ code })
+
+            // Update the session status to 'saved' regardless of changes
+            const { error: statusError } = await supabase.rpc(
+                'update_session_status',
+                {
+                    pairing_code: code,
+                    new_status: 'saved',
+                },
+            )
+
+            if (statusError) {
+                throw statusError
+            }
+
+            // Only process event changes if there are actual changes
             if (hasChanges) {
                 const trimmedEvents = getTrimmedEvents()
                 console.log('Saving trimmed events:', {
@@ -402,26 +460,30 @@ export function EditorEditView({
                     trimEnd,
                 })
 
-                // Here you would typically save the trimmed events to your backend
-                // For now, we'll just navigate
-                if (isFromRecordingSession) {
-                    setIsStreaming(false) // Reset streaming state
-                    setIsEditing(false) // Reset editing state
-                    router.push('/(protected)/(tabs)/videos')
-                } else {
-                    onClose()
-                }
+                // TODO: Save trimmed events to backend
+                // const { error: eventsError } = await supabase.rpc('store_editor_event_batch', {
+                //     pairing_code: code,
+                //     events: trimmedEvents,
+                //     timestamp_start: trimStart,
+                //     timestamp_end: trimEnd,
+                //     event_count: trimmedEvents.length
+                // })
+
+                // if (eventsError) {
+                //     throw eventsError
+                // }
+            }
+
+            // Navigate regardless of changes
+            if (isFromRecordingSession) {
+                setIsStreaming(false) // Reset streaming state
+                setIsEditing(false) // Reset editing state
+                router.push('/(protected)/(tabs)/videos')
             } else {
-                if (isFromRecordingSession) {
-                    setIsStreaming(false) // Reset streaming state
-                    setIsEditing(false) // Reset editing state
-                    router.push('/(protected)/(tabs)/videos')
-                } else {
-                    onClose()
-                }
+                onClose()
             }
         } catch (err) {
-            console.error('Failed to save trimmed events:', err)
+            console.error('Failed to save session:', err)
             setError(
                 err instanceof Error ? err.message : 'Failed to save changes',
             )
@@ -438,18 +500,9 @@ export function EditorEditView({
         router,
         setIsStreaming,
         setIsEditing,
+        code,
+        getTrimmedEvents,
     ])
-
-    // Add delete handler
-    const handleDelete = React.useCallback(() => {
-        if (isFromRecordingSession) {
-            setIsStreaming(false) // Reset streaming state
-            setIsEditing(false) // Reset editing state
-            router.push('/(protected)/(tabs)')
-        } else {
-            onClose()
-        }
-    }, [isFromRecordingSession, router, onClose, setIsStreaming, setIsEditing])
 
     if (error) {
         return (
