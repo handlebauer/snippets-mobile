@@ -58,7 +58,7 @@ export function EditorEditView({
 }: EditorEditViewProps) {
     const router = useRouter()
     const { isLandscape } = useScreenOrientation()
-    const { setIsStreaming } = useStream()
+    const { setIsStreaming, setIsEditing } = useStream()
     const [content, setContent] = React.useState('')
     const [currentTime, setCurrentTime] = React.useState(0)
     const [isPlaying, setIsPlaying] = React.useState(false)
@@ -406,6 +406,7 @@ export function EditorEditView({
                 // For now, we'll just navigate
                 if (isFromRecordingSession) {
                     setIsStreaming(false) // Reset streaming state
+                    setIsEditing(false) // Reset editing state
                     router.push('/(protected)/(tabs)/videos')
                 } else {
                     onClose()
@@ -413,6 +414,7 @@ export function EditorEditView({
             } else {
                 if (isFromRecordingSession) {
                     setIsStreaming(false) // Reset streaming state
+                    setIsEditing(false) // Reset editing state
                     router.push('/(protected)/(tabs)/videos')
                 } else {
                     onClose()
@@ -435,17 +437,19 @@ export function EditorEditView({
         isFromRecordingSession,
         router,
         setIsStreaming,
+        setIsEditing,
     ])
 
     // Add delete handler
     const handleDelete = React.useCallback(() => {
         if (isFromRecordingSession) {
             setIsStreaming(false) // Reset streaming state
-            router.push('/(protected)/(tabs)') // This is the Record tab
+            setIsEditing(false) // Reset editing state
+            router.push('/(protected)/(tabs)')
         } else {
             onClose()
         }
-    }, [isFromRecordingSession, router, onClose, setIsStreaming])
+    }, [isFromRecordingSession, router, onClose, setIsStreaming, setIsEditing])
 
     if (error) {
         return (
