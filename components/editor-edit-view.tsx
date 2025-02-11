@@ -40,13 +40,15 @@ interface Bookmark {
 
 interface EditorEditViewProps {
     events: EditorEvent[]
-    initialContent: string
+    finalContent: string
+    initialState: string
     onClose: () => void
 }
 
 export function EditorEditView({
     events,
-    initialContent,
+    finalContent,
+    initialState,
     onClose,
 }: EditorEditViewProps) {
     const { isLandscape } = useScreenOrientation()
@@ -73,19 +75,25 @@ export function EditorEditView({
     const [isTrimming, setIsTrimming] = React.useState(false)
     const trimChangeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
-    // Initialize with empty content on mount
+    // Initialize with initial state on mount
     React.useEffect(() => {
-        setContent('')
-    }, [])
+        console.log('🎬 Setting initial content:', {
+            initialState: initialState.slice(0, 100) + '...',
+            currentContent: content.slice(0, 100) + '...',
+        })
+        setContent(initialState)
+    }, [initialState])
 
     // Log initial events and timing
     React.useEffect(() => {
         console.log('📝 EditorEditView initialized:', {
             eventCount: events.length,
             events: events,
-            initialContent: initialContent.slice(0, 100) + '...', // First 100 chars
+            finalContent: finalContent.slice(0, 100) + '...', // First 100 chars
+            initialState: initialState.slice(0, 100) + '...', // First 100 chars
+            currentContent: content.slice(0, 100) + '...',
         })
-    }, [events, initialContent])
+    }, [events, finalContent, initialState, content])
 
     // Calculate total duration from events
     React.useEffect(() => {
@@ -139,9 +147,15 @@ export function EditorEditView({
 
     // Apply events up to current time
     const applyEventsUpToTime = (time: number) => {
-        // Start from empty string instead of initialContent
-        let newContent = ''
+        // Start from initial state
+        let newContent = initialState
         const startTime = events.length > 0 ? events[0].timestamp : 0
+
+        // If we're at time 0, show initial state
+        if (time <= 0) {
+            setContent(initialState)
+            return
+        }
 
         for (const event of events) {
             // Skip events that happened before our first event's timestamp

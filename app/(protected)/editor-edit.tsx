@@ -6,9 +6,14 @@ import { EditorEditView } from '@/components/editor-edit-view'
 
 export default function EditorEditScreen() {
     const router = useRouter()
-    const { events: eventsJson, initialContent } = useLocalSearchParams<{
+    const {
+        events: eventsJson,
+        finalContent,
+        initialState,
+    } = useLocalSearchParams<{
         events: string
-        initialContent: string
+        finalContent: string
+        initialState: string
     }>()
 
     // Parse events from JSON
@@ -21,10 +26,17 @@ export default function EditorEditScreen() {
         }
     }, [eventsJson])
 
+    console.log('📝 Editor Edit Screen received:', {
+        eventCount: events.length,
+        finalContent: finalContent?.slice(0, 100) + '...',
+        initialState: initialState?.slice(0, 100) + '...',
+    })
+
     return (
         <EditorEditView
             events={events}
-            initialContent={initialContent || ''}
+            finalContent={finalContent || ''}
+            initialState={initialState || ''}
             onClose={() => router.back()}
         />
     )

@@ -38,6 +38,12 @@ interface EditorBatch {
     events: EditorEvent[]
 }
 
+interface RecordingState {
+    isRecording: boolean
+    recordingStartTime: number | null
+    initialContent: string | null
+}
+
 interface CodeEditorViewerProps {
     sessionCode: string | null
     statusMessage: string | null
@@ -69,11 +75,19 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
     const router = useRouter()
 
     // Keep recording state in a ref to avoid effect recreation
-    const recordingStateRef = React.useRef({ isRecording, recordingStartTime })
+    const recordingStateRef = React.useRef<RecordingState>({
+        isRecording,
+        recordingStartTime,
+        initialContent: null,
+    })
 
     // Update ref when recording state changes
     React.useEffect(() => {
-        recordingStateRef.current = { isRecording, recordingStartTime }
+        recordingStateRef.current = {
+            isRecording,
+            recordingStartTime,
+            initialContent: recordingStateRef.current.initialContent,
+        }
     }, [isRecording, recordingStartTime])
 
     // Debug all channel messages
@@ -104,6 +118,29 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
         if (!channel) return
 
         console.log('🎥 Setting up event recording')
+
+        // Handle recording started from web app
+        const handleRecordingStarted = (payload: {
+            payload: {
+                content: string
+                initialContent: string
+                timestamp: number
+            }
+        }) => {
+            console.log('🎥 Recording started from web app:', {
+                timestamp: new Date(payload.payload.timestamp).toISOString(),
+                contentLength: payload.payload.content.length,
+                initialContentLength: payload.payload.initialContent.length,
+                content: payload.payload.content.slice(0, 100) + '...',
+                initialContent:
+                    payload.payload.initialContent.slice(0, 100) + '...',
+            })
+            setIsRecording(true)
+            setRecordingStartTime(payload.payload.timestamp)
+            // Set the initial content to what was in the editor before recording started
+            recordingStateRef.current.initialContent = payload.payload.content
+        }
+
         const handleEditorBatch = (payload: {
             payload: EditorBatch
             event: string
@@ -136,8 +173,14 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
             }
         }
 
-        // Set up a single stable subscription that lasts as long as the channel
-        const subscription = channel.on(
+        // Set up subscriptions
+        const recordingSubscription = channel.on(
+            'broadcast',
+            { event: 'editor_recording_started' },
+            handleRecordingStarted,
+        )
+
+        const batchSubscription = channel.on(
             'broadcast',
             { event: 'editor_batch' },
             handleEditorBatch,
@@ -148,9 +191,10 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
             console.log(
                 '🎬 Cleaning up event recording subscription (channel changed)',
             )
-            subscription.unsubscribe()
+            recordingSubscription.unsubscribe()
+            batchSubscription.unsubscribe()
         }
-    }, [channel]) // Only recreate subscription when channel changes
+    }, [channel])
 
     const { innerStyle, handleRecordPress: onRecordButtonPress } =
         useRecordButton({
@@ -171,6 +215,7 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
                     console.log('🎬 Starting recording at:', startTime)
                     setRecordingStartTime(startTime)
                     setRecordedEvents([]) // Clear previous events
+                    // Don't update initialContent here - we already have it from initialization
                 } else {
                     // Stop recording and transition to edit view
                     setRecordingStartTime(null)
@@ -179,15 +224,30 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
                         events: recordedEvents,
                         firstEvent: recordedEvents[0],
                         lastEvent: recordedEvents[recordedEvents.length - 1],
+                        initialContent:
+                            recordingStateRef.current.initialContent,
                     })
 
                     // Only navigate if we have events
                     if (recordedEvents.length > 0) {
+                        console.log('🎬 Navigating to edit view with:', {
+                            eventCount: recordedEvents.length,
+                            finalContent: content.slice(0, 100) + '...',
+                            initialState:
+                                (
+                                    recordingStateRef.current.initialContent ||
+                                    ''
+                                ).slice(0, 100) + '...',
+                            recordingState: recordingStateRef.current,
+                        })
                         router.push({
                             pathname: '/(protected)/editor-edit',
                             params: {
                                 events: JSON.stringify(recordedEvents),
-                                initialContent: content,
+                                finalContent: content,
+                                initialState:
+                                    recordingStateRef.current.initialContent ||
+                                    '',
                             },
                         })
                     } else {
@@ -340,6 +400,7 @@ export function CodeEditorViewer({
         const handleEditorInitialized = (payload: {
             payload: { content: string; timestamp: number }
         }) => {
+            // Just set the current content, don't capture as initial
             setContent(payload.payload.content)
         }
 
