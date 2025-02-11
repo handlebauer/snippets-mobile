@@ -13,7 +13,10 @@ import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { atomOneDarkReasonable } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 
+import { useRouter } from 'expo-router'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+
+import { useStream } from '@/contexts/recording.context'
 
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
@@ -43,6 +46,7 @@ interface EditorEditViewProps {
     finalContent: string
     initialState: string
     onClose: () => void
+    isFromRecordingSession?: boolean
 }
 
 export function EditorEditView({
@@ -50,8 +54,11 @@ export function EditorEditView({
     finalContent,
     initialState,
     onClose,
+    isFromRecordingSession = false,
 }: EditorEditViewProps) {
+    const router = useRouter()
     const { isLandscape } = useScreenOrientation()
+    const { setIsStreaming } = useStream()
     const [content, setContent] = React.useState('')
     const [currentTime, setCurrentTime] = React.useState(0)
     const [isPlaying, setIsPlaying] = React.useState(false)
@@ -396,10 +403,20 @@ export function EditorEditView({
                 })
 
                 // Here you would typically save the trimmed events to your backend
-                // For now, we'll just close the editor
-                onClose()
+                // For now, we'll just navigate
+                if (isFromRecordingSession) {
+                    setIsStreaming(false) // Reset streaming state
+                    router.push('/(protected)/(tabs)/videos')
+                } else {
+                    onClose()
+                }
             } else {
-                onClose()
+                if (isFromRecordingSession) {
+                    setIsStreaming(false) // Reset streaming state
+                    router.push('/(protected)/(tabs)/videos')
+                } else {
+                    onClose()
+                }
             }
         } catch (err) {
             console.error('Failed to save trimmed events:', err)
@@ -409,7 +426,26 @@ export function EditorEditView({
         } finally {
             setLoading(false)
         }
-    }, [events, hasChanges, trimStart, trimEnd, onClose])
+    }, [
+        events,
+        hasChanges,
+        trimStart,
+        trimEnd,
+        onClose,
+        isFromRecordingSession,
+        router,
+        setIsStreaming,
+    ])
+
+    // Add delete handler
+    const handleDelete = React.useCallback(() => {
+        if (isFromRecordingSession) {
+            setIsStreaming(false) // Reset streaming state
+            router.push('/(protected)/(tabs)') // This is the Record tab
+        } else {
+            onClose()
+        }
+    }, [isFromRecordingSession, router, onClose, setIsStreaming])
 
     if (error) {
         return (
@@ -448,60 +484,119 @@ export function EditorEditView({
                         isLandscape && styles.navBarLandscape,
                     ]}
                 >
-                    <Pressable onPress={onClose}>
-                        <Text style={styles.navButton}>Close</Text>
-                    </Pressable>
-                    <View style={styles.titleContainer}>
-                        <Text style={styles.navTitle}>Code</Text>
-                        <Pressable
-                            onPress={_event => {
-                                if (moreButtonRef.current) {
-                                    moreButtonRef.current.measure(
-                                        (
-                                            _x,
-                                            _y,
-                                            _width,
-                                            _height,
-                                            pageX,
-                                            pageY,
-                                        ) => {
-                                            setMenuPosition({
-                                                x: pageX,
-                                                y: pageY,
-                                            })
-                                            setShowMenu(true)
-                                        },
-                                    )
-                                }
-                            }}
-                            style={styles.moreButton}
-                            ref={moreButtonRef}
-                        >
-                            <MaterialCommunityIcons
-                                name="dots-horizontal"
-                                size={24}
-                                color="#FFFFFF"
-                            />
-                        </Pressable>
-                    </View>
-                    <Pressable
-                        onPress={handleSave}
-                        disabled={!hasChanges}
-                        style={({ pressed }) => [
-                            styles.saveButton,
-                            !hasChanges && styles.saveButtonDisabled,
-                            pressed && styles.saveButtonPressed,
-                        ]}
-                    >
-                        <Text
-                            style={[
-                                styles.navButton,
-                                !hasChanges && styles.navButtonDisabled,
-                            ]}
-                        >
-                            Save
-                        </Text>
-                    </Pressable>
+                    {isFromRecordingSession ? (
+                        <>
+                            <Pressable onPress={handleDelete}>
+                                <Text
+                                    style={[
+                                        styles.navButton,
+                                        styles.deleteButton,
+                                    ]}
+                                >
+                                    Delete
+                                </Text>
+                            </Pressable>
+                            <View style={styles.titleContainer}>
+                                <Text style={styles.navTitle}>Code</Text>
+                                <Pressable
+                                    onPress={_event => {
+                                        if (moreButtonRef.current) {
+                                            moreButtonRef.current.measure(
+                                                (
+                                                    _x,
+                                                    _y,
+                                                    _width,
+                                                    _height,
+                                                    pageX,
+                                                    pageY,
+                                                ) => {
+                                                    setMenuPosition({
+                                                        x: pageX,
+                                                        y: pageY,
+                                                    })
+                                                    setShowMenu(true)
+                                                },
+                                            )
+                                        }
+                                    }}
+                                    style={styles.moreButton}
+                                    ref={moreButtonRef}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="dots-horizontal"
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                </Pressable>
+                            </View>
+                            <Pressable
+                                onPress={handleSave}
+                                style={({ pressed }) => [
+                                    styles.saveButton,
+                                    pressed && styles.saveButtonPressed,
+                                ]}
+                            >
+                                <Text style={styles.navButton}>Save</Text>
+                            </Pressable>
+                        </>
+                    ) : (
+                        <>
+                            <Pressable onPress={onClose}>
+                                <Text style={styles.navButton}>Cancel</Text>
+                            </Pressable>
+                            <View style={styles.titleContainer}>
+                                <Text style={styles.navTitle}>Code</Text>
+                                <Pressable
+                                    onPress={_event => {
+                                        if (moreButtonRef.current) {
+                                            moreButtonRef.current.measure(
+                                                (
+                                                    _x,
+                                                    _y,
+                                                    _width,
+                                                    _height,
+                                                    pageX,
+                                                    pageY,
+                                                ) => {
+                                                    setMenuPosition({
+                                                        x: pageX,
+                                                        y: pageY,
+                                                    })
+                                                    setShowMenu(true)
+                                                },
+                                            )
+                                        }
+                                    }}
+                                    style={styles.moreButton}
+                                    ref={moreButtonRef}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="dots-horizontal"
+                                        size={24}
+                                        color="#FFFFFF"
+                                    />
+                                </Pressable>
+                            </View>
+                            <Pressable
+                                onPress={handleSave}
+                                disabled={!hasChanges}
+                                style={({ pressed }) => [
+                                    styles.saveButton,
+                                    !hasChanges && styles.saveButtonDisabled,
+                                    pressed && styles.saveButtonPressed,
+                                ]}
+                            >
+                                <Text
+                                    style={[
+                                        styles.navButton,
+                                        !hasChanges && styles.navButtonDisabled,
+                                    ]}
+                                >
+                                    Save
+                                </Text>
+                            </Pressable>
+                        </>
+                    )}
                 </View>
 
                 {/* Main Content */}
@@ -902,5 +997,8 @@ const styles = StyleSheet.create({
     },
     navButtonDisabled: {
         color: '#999999',
+    },
+    deleteButton: {
+        color: '#FF3B30',
     },
 })

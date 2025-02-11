@@ -10,10 +10,12 @@ export default function EditorEditScreen() {
         events: eventsJson,
         finalContent,
         initialState,
+        isFromRecordingSession,
     } = useLocalSearchParams<{
         events: string
         finalContent: string
         initialState: string
+        isFromRecordingSession?: string
     }>()
 
     // Parse events from JSON
@@ -30,6 +32,7 @@ export default function EditorEditScreen() {
         eventCount: events.length,
         finalContent: finalContent?.slice(0, 100) + '...',
         initialState: initialState?.slice(0, 100) + '...',
+        isFromRecordingSession,
     })
 
     return (
@@ -38,6 +41,7 @@ export default function EditorEditScreen() {
             finalContent={finalContent || ''}
             initialState={initialState || ''}
             onClose={() => router.back()}
+            isFromRecordingSession={isFromRecordingSession === 'true'}
         />
     )
 }

@@ -248,6 +248,7 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
                                 initialState:
                                     recordingStateRef.current.initialContent ||
                                     '',
+                                isFromRecordingSession: 'true',
                             },
                         })
                     } else {
