@@ -88,7 +88,7 @@ export function InsightsModal({
                 <View style={styles.insightsModalInner}>
                     <View style={styles.insightsHeader}>
                         <MaterialCommunityIcons
-                            name="lightbulb-outline"
+                            name="lightbulb"
                             size={24}
                             color="#FFFFFF"
                         />

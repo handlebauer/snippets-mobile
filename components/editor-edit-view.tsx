@@ -943,7 +943,11 @@ export function EditorEditView({
                                 onPress={() => setShowInsightsModal(true)}
                             >
                                 <MaterialCommunityIcons
-                                    name="lightbulb-outline"
+                                    name={
+                                        showInsightsModal
+                                            ? 'lightbulb'
+                                            : 'lightbulb-outline'
+                                    }
                                     size={24}
                                     color={
                                         showInsightsModal
