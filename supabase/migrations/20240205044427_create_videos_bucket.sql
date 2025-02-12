@@ -1,8 +1,10 @@
 -- Create the videos storage bucket
 insert into storage.buckets
     (id, name, public)
-values
-    ('videos', 'videos', true);
+select 'videos', 'videos', true
+where not exists (
+    select 1 from storage.buckets where id = 'videos'
+);
 
 -- Set up RLS policies for the bucket
 create policy "Videos are publicly accessible"
