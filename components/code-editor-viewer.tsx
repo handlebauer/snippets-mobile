@@ -140,6 +140,48 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
             recordingStateRef.current.initialContent = payload.payload.content
         }
 
+        // Handle recording finished from web app
+        const handleRecordingFinished = (payload: {
+            payload: {
+                content: string
+                initialContent: string
+                timestamp: number
+                events: EditorEvent[]
+            }
+        }) => {
+            console.log('🎬 Recording finished from web app:', {
+                timestamp: new Date(payload.payload.timestamp).toISOString(),
+                contentLength: payload.payload.content.length,
+                eventCount: payload.payload.events.length,
+            })
+            setIsRecording(false)
+            setRecordingStartTime(null)
+
+            // Navigate to edit view with the received events
+            if (payload.payload.events.length > 0) {
+                console.log('🎬 Navigating to edit view with:', {
+                    eventCount: payload.payload.events.length,
+                    finalContent: payload.payload.content.slice(0, 100) + '...',
+                    initialState:
+                        payload.payload.initialContent.slice(0, 100) + '...',
+                })
+                router.push({
+                    pathname: '/(protected)/editor-edit',
+                    params: {
+                        events: JSON.stringify(payload.payload.events),
+                        finalContent: payload.payload.content,
+                        initialState: payload.payload.initialContent,
+                        isFromRecordingSession: 'true',
+                        code: sessionCode || '',
+                    },
+                })
+            } else {
+                console.warn(
+                    '⚠️ No events received from web app, skipping navigation',
+                )
+            }
+        }
+
         const handleEditorBatch = (payload: {
             payload: EditorBatch
             event: string
@@ -173,10 +215,16 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
         }
 
         // Set up subscriptions
-        const recordingSubscription = channel.on(
+        const recordingStartSubscription = channel.on(
             'broadcast',
             { event: 'editor_recording_started' },
             handleRecordingStarted,
+        )
+
+        const recordingFinishSubscription = channel.on(
+            'broadcast',
+            { event: 'editor_recording_finished' },
+            handleRecordingFinished,
         )
 
         const batchSubscription = channel.on(
@@ -190,10 +238,11 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
             console.log(
                 '🎬 Cleaning up event recording subscription (channel changed)',
             )
-            recordingSubscription.unsubscribe()
+            recordingStartSubscription.unsubscribe()
+            recordingFinishSubscription.unsubscribe()
             batchSubscription.unsubscribe()
         }
-    }, [channel])
+    }, [channel, router, sessionCode])
 
     const { innerStyle, handleRecordPress: onRecordButtonPress } =
         useRecordButton({
