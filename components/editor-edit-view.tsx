@@ -20,12 +20,15 @@ import { InsightsModal } from '@/components/insights-modal'
 import { useChannel } from '@/contexts/channel.context'
 import { useSupabase } from '@/contexts/supabase.context'
 
+import { generateInsights } from '@/lib/api'
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
 import { CodeMetadataModal } from './code-metadata-modal'
 import { CodeScrubber } from './code-scrubber'
 import { FloatingMenu } from './floating-menu'
 import { VideoBookmarksModal } from './video-bookmarks-modal'
+
+import type { CodeInsights } from '@/lib/api'
 
 interface EditorEvent {
     type: 'insert' | 'delete' | 'replace'
@@ -99,6 +102,10 @@ export function EditorEditView({
     const [isTrimming, setIsTrimming] = React.useState(false)
     const trimChangeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const [showInsightsModal, setShowInsightsModal] = React.useState(false)
+    const [insightsLoading, setInsightsLoading] = React.useState(false)
+    const [insights, setInsights] = React.useState<CodeInsights | undefined>(
+        undefined,
+    )
 
     // Fetch events when component mounts
     React.useEffect(() => {
@@ -575,6 +582,41 @@ export function EditorEditView({
         durationMs,
     ])
 
+    // Add function to fetch insights
+    const fetchInsights = React.useCallback(async () => {
+        if (!code || !events.length) return
+
+        try {
+            setInsightsLoading(true)
+            const generatedInsights = await generateInsights({
+                pairingCode: code,
+                data: {
+                    events,
+                    initialState,
+                    finalContent,
+                },
+            })
+            setInsights(generatedInsights)
+        } catch (error) {
+            console.error('Failed to fetch insights:', error)
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to fetch insights',
+            )
+        } finally {
+            setInsightsLoading(false)
+        }
+    }, [code, events, initialState, finalContent])
+
+    // Handle insights button click
+    const handleInsightsClick = React.useCallback(async () => {
+        setShowInsightsModal(true)
+        if (!insights) {
+            await fetchInsights()
+        }
+    }, [insights, fetchInsights])
+
     if (error) {
         return (
             <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -940,7 +982,7 @@ export function EditorEditView({
                                     showInsightsModal &&
                                         styles.toolButtonActive,
                                 ]}
-                                onPress={() => setShowInsightsModal(true)}
+                                onPress={handleInsightsClick}
                             >
                                 <MaterialCommunityIcons
                                     name={
@@ -1025,7 +1067,8 @@ export function EditorEditView({
             <InsightsModal
                 visible={showInsightsModal}
                 onClose={() => setShowInsightsModal(false)}
-                isLoading={false} // We'll add loading state later
+                isLoading={insightsLoading}
+                insights={insights}
             />
         </View>
     )

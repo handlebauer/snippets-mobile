@@ -167,6 +167,7 @@ export type Database = {
                     type:
                         | Database['public']['Enums']['recording_session_type']
                         | null
+                    updated_at: string | null
                     user_id: string
                 }
                 Insert: {
@@ -183,6 +184,7 @@ export type Database = {
                     type?:
                         | Database['public']['Enums']['recording_session_type']
                         | null
+                    updated_at?: string | null
                     user_id: string
                 }
                 Update: {
@@ -199,6 +201,7 @@ export type Database = {
                     type?:
                         | Database['public']['Enums']['recording_session_type']
                         | null
+                    updated_at?: string | null
                     user_id?: string
                 }
                 Relationships: [
@@ -298,6 +301,7 @@ export type Database = {
                     status: string
                     final_content: string
                     thumbnail_code: string
+                    insights: Json
                 }[]
             }
             finalize_recording_session: {
@@ -326,7 +330,7 @@ export type Database = {
             store_editor_insights: {
                 Args: {
                     pairing_code: string
-                    insights: Json
+                    insights_data: Json
                 }
                 Returns: Json
             }

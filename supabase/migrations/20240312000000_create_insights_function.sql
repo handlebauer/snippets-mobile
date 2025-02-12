@@ -2,6 +2,10 @@
 ALTER TABLE recording_sessions
 ADD COLUMN IF NOT EXISTS insights jsonb;
 
+-- Add updated_at column to recording_sessions
+ALTER TABLE recording_sessions
+ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
 -- Create a type for the insights structure
 DO $$ BEGIN
     CREATE TYPE public.insight_suggestion AS (
@@ -37,7 +41,7 @@ END $$;
 -- Create function to store insights
 CREATE OR REPLACE FUNCTION store_editor_insights(
     pairing_code text,
-    insights jsonb
+    insights_data jsonb
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -59,10 +63,10 @@ BEGIN
 
     -- Validate insights structure
     IF NOT (
-        insights ? 'summary' AND
-        insights ? 'keyChanges' AND
-        insights ? 'complexity' AND
-        insights ? 'suggestions'
+        insights_data ? 'summary' AND
+        insights_data ? 'keyChanges' AND
+        insights_data ? 'complexity' AND
+        insights_data ? 'suggestions'
     ) THEN
         RAISE EXCEPTION 'Invalid insights structure';
     END IF;
@@ -70,12 +74,12 @@ BEGIN
     -- Update the session with insights
     UPDATE recording_sessions
     SET 
-        insights = insights,
+        insights = insights_data,
         updated_at = NOW()
     WHERE id = session_record.id
-    RETURNING insights INTO insights;
+    RETURNING insights INTO insights_data;
 
-    RETURN insights;
+    RETURN insights_data;
 EXCEPTION
     WHEN others THEN
         RAISE EXCEPTION 'Failed to store insights: %', SQLERRM;

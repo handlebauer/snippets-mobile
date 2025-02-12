@@ -19,7 +19,8 @@ returns table (
     event_count integer,
     status text,
     final_content text,
-    thumbnail_code text
+    thumbnail_code text,
+    insights jsonb
 ) language plpgsql
 security definer
 set search_path = public
@@ -46,7 +47,8 @@ begin
         null::integer as event_count,
         'saved'::text as status, -- Videos are always considered saved once they exist
         null::text as final_content,
-        null::text as thumbnail_code
+        null::text as thumbnail_code,
+        null::jsonb as insights
     from videos v
     where v.profile_id = profile_id_param
     
@@ -115,7 +117,8 @@ begin
                 select substring(content, 1, 500)  -- Limit to 500 chars for thumbnail
                 from cleaned_content
             )
-        end as thumbnail_code
+        end as thumbnail_code,
+        rs.insights
     from recording_sessions rs
     where rs.user_id = profile_id_param
     and rs.type = 'code_editor'

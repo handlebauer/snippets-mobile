@@ -1,5 +1,5 @@
 import React from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
 import { Modal, Portal, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -97,6 +97,7 @@ export function InsightsModal({
 
                     {isLoading ? (
                         <View style={styles.insightsLoadingContainer}>
+                            <ActivityIndicator size="small" color="#0A84FF" />
                             <Text style={styles.insightsLoadingText}>
                                 Analyzing your code changes...
                             </Text>
@@ -367,12 +368,19 @@ const styles = StyleSheet.create({
         paddingBottom: 32,
     },
     insightsLoadingContainer: {
-        padding: 24,
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 32,
+        paddingHorizontal: 20,
+        minHeight: 200,
+        backgroundColor: '#1A1A1A',
     },
     insightsLoadingText: {
-        fontSize: 14,
-        color: '#CCCCCC',
+        color: '#98989F',
+        fontSize: 15,
+        textAlign: 'center',
     },
     insightsSection: {
         marginBottom: 16,
