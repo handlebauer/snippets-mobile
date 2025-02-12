@@ -16,7 +16,6 @@ interface PostRecordingViewProps {
 
 export function PostRecordingView({
     videoProcessing,
-    onClose,
     pairingCode,
 }: PostRecordingViewProps) {
     const router = useRouter()

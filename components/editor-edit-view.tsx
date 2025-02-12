@@ -16,6 +16,7 @@ import { atomOneDarkReasonable } from 'react-syntax-highlighter/dist/esm/styles/
 import { useRouter } from 'expo-router'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import { InsightsModal } from '@/components/insights-modal'
 import { useChannel } from '@/contexts/channel.context'
 import { useSupabase } from '@/contexts/supabase.context'
 
@@ -97,6 +98,7 @@ export function EditorEditView({
     const [hasChanges, setHasChanges] = React.useState(false)
     const [isTrimming, setIsTrimming] = React.useState(false)
     const trimChangeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+    const [showInsightsModal, setShowInsightsModal] = React.useState(false)
 
     // Fetch events when component mounts
     React.useEffect(() => {
@@ -908,33 +910,6 @@ export function EditorEditView({
                             <Pressable
                                 style={[
                                     styles.toolButton,
-                                    activeTab === 'adjust' &&
-                                        styles.toolButtonActive,
-                                ]}
-                                onPress={() => setActiveTab('adjust')}
-                            >
-                                <MaterialCommunityIcons
-                                    name="tune"
-                                    size={24}
-                                    color={
-                                        activeTab === 'adjust'
-                                            ? '#0A84FF'
-                                            : '#FFFFFF'
-                                    }
-                                />
-                                <Text
-                                    style={[
-                                        styles.toolButtonText,
-                                        activeTab === 'adjust' &&
-                                            styles.toolButtonTextActive,
-                                    ]}
-                                >
-                                    Adjust
-                                </Text>
-                            </Pressable>
-                            <Pressable
-                                style={[
-                                    styles.toolButton,
                                     showBookmarksModal &&
                                         styles.toolButtonActive,
                                 ]}
@@ -957,6 +932,33 @@ export function EditorEditView({
                                     ]}
                                 >
                                     Bookmarks
+                                </Text>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.toolButton,
+                                    showInsightsModal &&
+                                        styles.toolButtonActive,
+                                ]}
+                                onPress={() => setShowInsightsModal(true)}
+                            >
+                                <MaterialCommunityIcons
+                                    name="lightbulb-outline"
+                                    size={24}
+                                    color={
+                                        showInsightsModal
+                                            ? '#0A84FF'
+                                            : '#FFFFFF'
+                                    }
+                                />
+                                <Text
+                                    style={[
+                                        styles.toolButtonText,
+                                        showInsightsModal &&
+                                            styles.toolButtonTextActive,
+                                    ]}
+                                >
+                                    Insights
                                 </Text>
                             </Pressable>
                             <Pressable
@@ -992,14 +994,6 @@ export function EditorEditView({
                             setShowMetadataModal(true)
                         },
                     },
-                    {
-                        title: 'Share',
-                        icon:
-                            Platform.OS === 'ios'
-                                ? 'export-variant'
-                                : 'share-variant',
-                        onPress: handleShare,
-                    },
                 ]}
             />
 
@@ -1021,6 +1015,13 @@ export function EditorEditView({
                 onDeleteBookmark={deleteBookmark}
                 onSeekToBookmark={seekToBookmark}
                 onUpdateBookmark={handleUpdateBookmark}
+            />
+
+            {/* Add InsightsModal */}
+            <InsightsModal
+                visible={showInsightsModal}
+                onClose={() => setShowInsightsModal(false)}
+                isLoading={false} // We'll add loading state later
             />
         </View>
     )
