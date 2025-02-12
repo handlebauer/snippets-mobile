@@ -588,7 +588,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     // Replace onClose with router.back()
     const handleCancel = () => {
         setIsStreaming(false) // Reset streaming state
-        router.push('/(protected)/(tabs)/videos')
+        router.back()
     }
 
     // Add share handler
@@ -1059,7 +1059,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
                     ) : (
                         <>
                             <Pressable onPress={handleCancel}>
-                                <Text style={styles.navButton}>Cancel</Text>
+                                <Text style={styles.navButton}>Close</Text>
                             </Pressable>
                             <View style={styles.titleContainer}>
                                 <Text style={styles.navTitle}>Video</Text>

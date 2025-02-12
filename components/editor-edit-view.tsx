@@ -699,12 +699,21 @@ export function EditorEditView({
                             </View>
                             <Pressable
                                 onPress={handleSave}
+                                disabled={!hasChanges}
                                 style={({ pressed }) => [
                                     styles.saveButton,
+                                    !hasChanges && styles.saveButtonDisabled,
                                     pressed && styles.saveButtonPressed,
                                 ]}
                             >
-                                <Text style={styles.navButton}>Save</Text>
+                                <Text
+                                    style={[
+                                        styles.navButton,
+                                        !hasChanges && styles.navButtonDisabled,
+                                    ]}
+                                >
+                                    Save
+                                </Text>
                             </Pressable>
                         </>
                     ) : (
@@ -747,12 +756,21 @@ export function EditorEditView({
                             </View>
                             <Pressable
                                 onPress={handleSave}
+                                disabled={!hasChanges}
                                 style={({ pressed }) => [
                                     styles.saveButton,
+                                    !hasChanges && styles.saveButtonDisabled,
                                     pressed && styles.saveButtonPressed,
                                 ]}
                             >
-                                <Text style={styles.navButton}>Save</Text>
+                                <Text
+                                    style={[
+                                        styles.navButton,
+                                        !hasChanges && styles.navButtonDisabled,
+                                    ]}
+                                >
+                                    Save
+                                </Text>
                             </Pressable>
                         </>
                     )}
