@@ -13,7 +13,7 @@ export default {
             backgroundColor: '#ffffff',
         },
         ios: {
-            bundleIdentifier: 'change-when-ready',
+            bundleIdentifier: 'is.project.snippets',
             usesAppleSignIn: true,
             supportsTablet: true,
             infoPlist: {
@@ -44,7 +44,6 @@ export default {
                 },
             ],
         ],
-        bundleIdentifier: 'change-when-ready',
         experiments: {
             typedRoutes: true,
             reactServerFunctions: true,
@@ -52,10 +51,9 @@ export default {
         extra: {
             supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
             supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-            openshotAccessKey: process.env.OPENSHOT_ACCESS_KEY,
-            openshotBaseUrl: process.env.OPENSHOT_BASE_URL,
             githubOAuthClientId: process.env.GITHUB_APP_CLIENT_ID,
             githubOAuthClientSecret: process.env.GITHUB_APP_CLIENT_SECRET,
+            apiUrl: process.env.API_URL,
             eas: {
                 projectId: 'abd6e45d-9048-467e-a2c9-597877588671',
             },
