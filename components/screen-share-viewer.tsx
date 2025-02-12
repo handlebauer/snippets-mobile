@@ -217,6 +217,7 @@ export function ScreenShareViewer({
         console.log('🔄 Transitioning to PostRecordingView:', {
             status: state.videoProcessing.status,
             videoId: state.videoProcessing.videoId,
+            pairingCode: effectiveState.sessionCode,
         })
         return (
             <PostRecordingView
@@ -228,6 +229,7 @@ export function ScreenShareViewer({
                     console.log('🔄 PostRecordingView close requested')
                     onReset()
                 }}
+                pairingCode={effectiveState.sessionCode}
             />
         )
     }

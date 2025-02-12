@@ -19,6 +19,7 @@ export interface VideoMetadata extends BaseRecordingMetadata {
     storage_path: string
     mime_type: string
     thumbnail_url?: string
+    status: 'draft' | 'recording' | 'saved' | 'deleted'
 }
 
 /**

@@ -699,17 +699,23 @@ export function EditorEditView({
                             </View>
                             <Pressable
                                 onPress={handleSave}
-                                disabled={!hasChanges}
+                                disabled={
+                                    isFromRecordingSession ? false : !hasChanges
+                                }
                                 style={({ pressed }) => [
-                                    styles.saveButton,
-                                    !hasChanges && styles.saveButtonDisabled,
-                                    pressed && styles.saveButtonPressed,
+                                    styles.editorSaveButton,
+                                    !isFromRecordingSession &&
+                                        !hasChanges &&
+                                        styles.editorSaveButtonDisabled,
+                                    pressed && styles.editorSaveButtonPressed,
                                 ]}
                             >
                                 <Text
                                     style={[
                                         styles.navButton,
-                                        !hasChanges && styles.navButtonDisabled,
+                                        !isFromRecordingSession &&
+                                            !hasChanges &&
+                                            styles.navButtonDisabled,
                                     ]}
                                 >
                                     Save
@@ -756,17 +762,23 @@ export function EditorEditView({
                             </View>
                             <Pressable
                                 onPress={handleSave}
-                                disabled={!hasChanges}
+                                disabled={
+                                    isFromRecordingSession ? false : !hasChanges
+                                }
                                 style={({ pressed }) => [
-                                    styles.saveButton,
-                                    !hasChanges && styles.saveButtonDisabled,
-                                    pressed && styles.saveButtonPressed,
+                                    styles.editorSaveButton,
+                                    !isFromRecordingSession &&
+                                        !hasChanges &&
+                                        styles.editorSaveButtonDisabled,
+                                    pressed && styles.editorSaveButtonPressed,
                                 ]}
                             >
                                 <Text
                                     style={[
                                         styles.navButton,
-                                        !hasChanges && styles.navButtonDisabled,
+                                        !isFromRecordingSession &&
+                                            !hasChanges &&
+                                            styles.navButtonDisabled,
                                     ]}
                                 >
                                     Save
@@ -1161,15 +1173,15 @@ const styles = StyleSheet.create({
     moreButton: {
         padding: 4,
     },
-    saveButton: {
+    editorSaveButton: {
         opacity: 1,
         padding: 8,
         borderRadius: 8,
     },
-    saveButtonDisabled: {
+    editorSaveButtonDisabled: {
         opacity: 0.5,
     },
-    saveButtonPressed: {
+    editorSaveButtonPressed: {
         opacity: 0.8,
     },
     navButtonDisabled: {

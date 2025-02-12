@@ -137,8 +137,12 @@ export function RecordingList({
 
     // Filter recordings based on selected repo
     const filteredRecordings = React.useMemo(() => {
-        if (!selectedRepo) return recordings
-        return recordings.filter(r => r.linked_repo === selectedRepo)
+        // First filter for saved recordings only
+        const savedRecordings = recordings.filter(r => r.status === 'saved')
+
+        // Then apply repo filter if selected
+        if (!selectedRepo) return savedRecordings
+        return savedRecordings.filter(r => r.linked_repo === selectedRepo)
     }, [recordings, selectedRepo])
 
     const renderItem = React.useCallback(

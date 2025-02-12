@@ -141,6 +141,7 @@ export function ChannelProvider({ children }: { children: React.ReactNode }) {
         if (channelRef.current) {
             channelRef.current.unsubscribe()
             channelRef.current = null
+            console.log('🔌 [Channel] Resetting state')
             setState(prev => ({
                 ...prev,
                 isConnected: false,

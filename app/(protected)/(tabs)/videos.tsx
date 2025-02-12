@@ -18,11 +18,14 @@ export default function VideosScreen() {
     // Add debug logging
     React.useEffect(() => {
         if (recordings.length > 0) {
-            console.log('🎥 All recordings:', recordings)
+            // console.log('🎥 All recordings:', recordings)
 
             // Log editor recordings specifically
             const editorRecordings = recordings.filter(isEditorRecording)
-            console.log('📝 Editor recordings:', editorRecordings)
+            const videoRecordings = recordings.filter(isVideoRecording)
+
+            // console.log('📝 Editor recordings:', editorRecordings)
+            console.log('🎥 Video recordings:', videoRecordings)
 
             if (editorRecordings.length > 0) {
                 const firstEditor = editorRecordings[0]
@@ -68,10 +71,13 @@ export default function VideosScreen() {
         )
     }
 
+    // Show only saved recordings
+    const filteredRecordings = recordings.filter(r => r.status === 'saved')
+
     return (
         <View style={styles.container}>
             <RecordingList
-                recordings={recordings}
+                recordings={filteredRecordings}
                 onRefresh={refetch}
                 onEditRecording={handleEditRecording}
             />

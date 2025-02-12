@@ -44,7 +44,7 @@ begin
         null::text as initial_content,
         null::bigint as duration_ms,
         null::integer as event_count,
-        null::text as status,
+        'saved'::text as status, -- Videos are always considered saved once they exist
         null::text as final_content,
         null::text as thumbnail_code
     from videos v

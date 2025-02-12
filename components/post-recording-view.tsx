@@ -11,11 +11,13 @@ import type { VideoProcessingSignal } from '@/types/webrtc'
 interface PostRecordingViewProps {
     videoProcessing: NonNullable<VideoProcessingSignal>
     onClose: () => void
+    pairingCode?: string | null
 }
 
 export function PostRecordingView({
     videoProcessing,
     onClose,
+    pairingCode,
 }: PostRecordingViewProps) {
     const router = useRouter()
     const [showSuccess, setShowSuccess] = React.useState(false)
@@ -75,6 +77,7 @@ export function PostRecordingView({
                     params: {
                         id: videoProcessing.videoId!,
                         referrer: 'post-recording',
+                        code: pairingCode || '',
                     },
                 })
             }, 1000)
@@ -87,6 +90,7 @@ export function PostRecordingView({
         router,
         fadeAnim,
         scaleAnim,
+        pairingCode,
     ])
 
     return (
