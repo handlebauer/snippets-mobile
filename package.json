@@ -19,12 +19,24 @@
     "jest": {
         "preset": "jest-expo"
     },
+    "expo": {
+        "doctor": {
+            "reactNativeDirectoryCheck": {
+                "exclude": [
+                    "@react-native-community/blur",
+                    "react-native-webrtc"
+                ],
+                "listUnknownPackages": false
+            }
+        }
+    },
     "dependencies": {
         "@config-plugins/react-native-webrtc": "^10.0.0",
         "@expo/vector-icons": "^14.0.2",
         "@gorhom/bottom-sheet": "^5.0.6",
         "@react-native-async-storage/async-storage": "1.23.1",
         "@react-native-community/blur": "^4.4.1",
+        "@react-native-community/cli": "^15.1.3",
         "@react-navigation/native": "^7.0.14",
         "@supabase/supabase-js": "^2.48.1",
         "@types/base-64": "^1.0.2",
