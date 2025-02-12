@@ -142,7 +142,7 @@ export default function Index() {
                         textColor="#FFFFFF"
                         icon={() => (
                             <MaterialCommunityIcons
-                                name="code-braces"
+                                name="code-tags"
                                 size={20}
                                 marginRight={5}
                                 color="#FFFFFF"

@@ -20,11 +20,22 @@ interface InsightComplexity {
     explanation: string
 }
 
+interface DeveloperStyle {
+    timeDistribution: {
+        thinkingTimePercent: number
+        activeEditingPercent: number
+        reviewingPercent: number
+    }
+    editingPatterns: string[]
+    paceInsights: string
+}
+
 export interface CodeInsights {
     summary: string
     keyChanges: string[]
     complexity: InsightComplexity
     suggestions: InsightSuggestion[]
+    developerStyle: DeveloperStyle
 }
 
 interface GenerateInsightsRequest {

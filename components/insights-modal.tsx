@@ -50,6 +50,20 @@ const dummyInsights: CodeInsights = {
             priority: 'low',
         },
     ],
+    developerStyle: {
+        timeDistribution: {
+            thinkingTimePercent: 35,
+            activeEditingPercent: 45,
+            reviewingPercent: 20,
+        },
+        editingPatterns: [
+            'Methodical, incremental changes',
+            'Regular pauses for review',
+            'Consistent coding pace',
+        ],
+        paceInsights:
+            'Developer shows a balanced approach between active coding and thoughtful consideration.',
+    },
 }
 
 export function InsightsModal({
@@ -124,33 +138,45 @@ export function InsightsModal({
                                 <Text style={styles.insightsSectionTitle}>
                                     Key Changes
                                 </Text>
-                                {insights.keyChanges.map((change, index) => (
-                                    <View
-                                        key={index}
-                                        style={
-                                            styles.insightsKeyChangeContainer
-                                        }
-                                    >
+                                {insights.keyChanges
+                                    .slice(0, 3)
+                                    .map((change, index) => (
                                         <View
+                                            key={index}
                                             style={
-                                                styles.insightsChangeNumberBadge
+                                                styles.insightsKeyChangeContainer
                                             }
                                         >
-                                            <Text
+                                            <View
                                                 style={
-                                                    styles.insightsChangeNumberText
+                                                    styles.insightsChangeNumberBadge
                                                 }
                                             >
-                                                {index + 1}
+                                                <Text
+                                                    style={
+                                                        styles.insightsChangeNumberText
+                                                    }
+                                                >
+                                                    {index + 1}
+                                                </Text>
+                                            </View>
+                                            <Text
+                                                style={
+                                                    styles.insightsKeyChangeText
+                                                }
+                                            >
+                                                {change}
                                             </Text>
                                         </View>
-                                        <Text
-                                            style={styles.insightsKeyChangeText}
-                                        >
-                                            {change}
-                                        </Text>
-                                    </View>
-                                ))}
+                                    ))}
+                                {insights.keyChanges.length > 3 && (
+                                    <Text
+                                        style={styles.insightsMoreChangesText}
+                                    >
+                                        +{insights.keyChanges.length - 3} more
+                                        changes
+                                    </Text>
+                                )}
                             </View>
 
                             {/* Complexity Section */}
@@ -237,7 +263,7 @@ export function InsightsModal({
                             </View>
 
                             {/* Suggestions Section */}
-                            <View style={[styles.insightsLastSection]}>
+                            <View style={styles.insightsSection}>
                                 <Text style={styles.insightsSectionTitle}>
                                     Suggestions
                                 </Text>
@@ -320,6 +346,139 @@ export function InsightsModal({
                                         </View>
                                     ),
                                 )}
+                            </View>
+
+                            {/* Developer Style Section */}
+                            <View style={[styles.insightsLastSection]}>
+                                <Text style={styles.insightsSectionTitle}>
+                                    Developer Style
+                                </Text>
+
+                                {/* Time Distribution */}
+                                <View style={styles.timeDistributionContainer}>
+                                    <Text style={styles.timeDistributionTitle}>
+                                        Time Distribution
+                                    </Text>
+                                    <View style={styles.timeDistributionBars}>
+                                        <View
+                                            style={styles.timeDistributionBar}
+                                        >
+                                            <View
+                                                style={[
+                                                    styles.timeDistributionFill,
+                                                    {
+                                                        width: `${insights.developerStyle.timeDistribution.thinkingTimePercent}%`,
+                                                        backgroundColor:
+                                                            '#FF9F0A',
+                                                    },
+                                                ]}
+                                            />
+                                            <Text
+                                                style={
+                                                    styles.timeDistributionLabel
+                                                }
+                                            >
+                                                Thinking (
+                                                {
+                                                    insights.developerStyle
+                                                        .timeDistribution
+                                                        .thinkingTimePercent
+                                                }
+                                                %)
+                                            </Text>
+                                        </View>
+                                        <View
+                                            style={styles.timeDistributionBar}
+                                        >
+                                            <View
+                                                style={[
+                                                    styles.timeDistributionFill,
+                                                    {
+                                                        width: `${insights.developerStyle.timeDistribution.activeEditingPercent}%`,
+                                                        backgroundColor:
+                                                            '#30D158',
+                                                    },
+                                                ]}
+                                            />
+                                            <Text
+                                                style={
+                                                    styles.timeDistributionLabel
+                                                }
+                                            >
+                                                Active Editing (
+                                                {
+                                                    insights.developerStyle
+                                                        .timeDistribution
+                                                        .activeEditingPercent
+                                                }
+                                                %)
+                                            </Text>
+                                        </View>
+                                        <View
+                                            style={styles.timeDistributionBar}
+                                        >
+                                            <View
+                                                style={[
+                                                    styles.timeDistributionFill,
+                                                    {
+                                                        width: `${insights.developerStyle.timeDistribution.reviewingPercent}%`,
+                                                        backgroundColor:
+                                                            '#0A84FF',
+                                                    },
+                                                ]}
+                                            />
+                                            <Text
+                                                style={
+                                                    styles.timeDistributionLabel
+                                                }
+                                            >
+                                                Reviewing (
+                                                {
+                                                    insights.developerStyle
+                                                        .timeDistribution
+                                                        .reviewingPercent
+                                                }
+                                                %)
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Editing Patterns */}
+                                <View style={styles.editingPatternsContainer}>
+                                    <Text style={styles.editingPatternsTitle}>
+                                        Editing Patterns
+                                    </Text>
+                                    {insights.developerStyle.editingPatterns.map(
+                                        (pattern, index) => (
+                                            <View
+                                                key={index}
+                                                style={styles.patternItem}
+                                            >
+                                                <MaterialCommunityIcons
+                                                    name="circle-medium"
+                                                    size={20}
+                                                    color="#8E8E93"
+                                                />
+                                                <Text
+                                                    style={styles.patternText}
+                                                >
+                                                    {pattern}
+                                                </Text>
+                                            </View>
+                                        ),
+                                    )}
+                                </View>
+
+                                {/* Pace Insights */}
+                                <View style={styles.paceInsightsContainer}>
+                                    <Text style={styles.paceInsightsTitle}>
+                                        Pace Analysis
+                                    </Text>
+                                    <Text style={styles.paceInsightsText}>
+                                        {insights.developerStyle.paceInsights}
+                                    </Text>
+                                </View>
                             </View>
                         </ScrollView>
                     )}
@@ -516,5 +675,91 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#CCCCCC',
         lineHeight: 20,
+    },
+    timeDistributionContainer: {
+        backgroundColor: '#2A2A2A',
+        padding: 16,
+        borderRadius: 8,
+        marginTop: 8,
+    },
+    timeDistributionTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        marginBottom: 12,
+    },
+    timeDistributionBars: {
+        gap: 12,
+    },
+    timeDistributionBar: {
+        height: 24,
+        backgroundColor: '#1A1A1A',
+        borderRadius: 4,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    timeDistributionFill: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        opacity: 0.8,
+    },
+    timeDistributionLabel: {
+        position: 'absolute',
+        left: 8,
+        top: 0,
+        bottom: 0,
+        fontSize: 12,
+        color: '#FFFFFF',
+        textAlignVertical: 'center',
+        paddingTop: 4,
+    },
+    editingPatternsContainer: {
+        backgroundColor: '#2A2A2A',
+        padding: 16,
+        borderRadius: 8,
+        marginTop: 12,
+    },
+    editingPatternsTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        marginBottom: 12,
+    },
+    patternItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 4,
+    },
+    patternText: {
+        fontSize: 14,
+        color: '#CCCCCC',
+        flex: 1,
+        marginLeft: 4,
+    },
+    paceInsightsContainer: {
+        backgroundColor: '#2A2A2A',
+        padding: 16,
+        borderRadius: 8,
+        marginTop: 12,
+    },
+    paceInsightsTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        marginBottom: 8,
+    },
+    paceInsightsText: {
+        fontSize: 14,
+        color: '#CCCCCC',
+        lineHeight: 20,
+    },
+    insightsMoreChangesText: {
+        fontSize: 13,
+        color: '#8E8E93',
+        textAlign: 'center',
+        marginTop: 8,
+        fontStyle: 'italic',
     },
 })

@@ -494,7 +494,7 @@ export function CodeEditorViewer({
             sessionCode={sessionCode}
             statusMessage={statusMessage}
             onReset={onReset}
-            icon="code-braces"
+            icon="code-tags"
             title="Connect to Editor"
             description={description}
         />
