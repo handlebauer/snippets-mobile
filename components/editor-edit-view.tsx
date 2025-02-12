@@ -16,7 +16,7 @@ import { atomOneDarkReasonable } from 'react-syntax-highlighter/dist/esm/styles/
 import { useRouter } from 'expo-router'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
-import { useStream } from '@/contexts/recording.context'
+import { useChannel } from '@/contexts/channel.context'
 import { useSupabase } from '@/contexts/supabase.context'
 
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
@@ -69,7 +69,7 @@ export function EditorEditView({
 
     const router = useRouter()
     const { isLandscape } = useScreenOrientation()
-    const { setIsStreaming, setIsEditing } = useStream()
+    const { setIsStreaming, setIsEditing } = useChannel()
     const { supabase } = useSupabase()
     const [events, setEvents] = React.useState<EditorEvent[]>(
         initialEvents || [],

@@ -17,7 +17,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { PostRecordingView } from '@/components/post-recording-view'
 import { RecordingTimer } from '@/components/recording-timer'
-import { useStream } from '@/contexts/recording.context'
+import { useChannel } from '@/contexts/channel.context'
 
 import { PairingView } from '@/components/session/pairing-view'
 import { useRecordButton } from '@/hooks/use-record-button'
@@ -54,9 +54,9 @@ export function ScreenShareViewer({
     const {
         setIsStreaming,
         setRecordingStartTime,
-        isScreenRecording,
+        state: { isScreenRecording },
         setIsScreenRecording,
-    } = useStream()
+    } = useChannel()
     const { isLandscape, lockToPortrait, unlockOrientation } =
         useScreenOrientation()
     const spinValue = React.useRef(new Animated.Value(0)).current

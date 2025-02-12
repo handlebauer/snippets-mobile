@@ -2,12 +2,14 @@ import React from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
 
-import { useStream } from '@/contexts/recording.context'
+import { useChannel } from '@/contexts/channel.context'
 
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
 export function RecordingTimer() {
-    const { recordingDuration, recordingStartTime } = useStream()
+    const {
+        state: { recordingDuration, recordingStartTime },
+    } = useChannel()
     const { isLandscape } = useScreenOrientation()
 
     return (

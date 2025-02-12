@@ -8,7 +8,7 @@ import { atomOneDarkReasonable } from 'react-syntax-highlighter/dist/esm/styles/
 import { useRouter } from 'expo-router'
 
 import { RecordingTimer } from '@/components/recording-timer'
-import { useStream } from '@/contexts/recording.context'
+import { useChannel } from '@/contexts/channel.context'
 
 import { PairingView } from '@/components/session/pairing-view'
 import { useRecordButton } from '@/hooks/use-record-button'
@@ -64,10 +64,9 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
     const {
         setIsEditing,
         setRecordingStartTime,
-        isRecording,
+        state: { isRecording, recordingStartTime },
         setIsRecording,
-        recordingStartTime,
-    } = useStream()
+    } = useChannel()
     const { isLandscape } = useScreenOrientation()
     const [recordedEvents, setRecordedEvents] = React.useState<EditorEvent[]>(
         [],

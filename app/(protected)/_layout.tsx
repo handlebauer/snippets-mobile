@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 
 import { router, Stack } from 'expo-router'
 
-import { StreamProvider } from '@/contexts/recording.context'
+import { ChannelProvider } from '@/contexts/channel.context'
 import { useSupabase } from '@/contexts/supabase.context'
 
 export default function ProtectedLayout() {
@@ -19,7 +19,7 @@ export default function ProtectedLayout() {
     if (!session) return null
 
     return (
-        <StreamProvider>
+        <ChannelProvider>
             <Stack
                 screenOptions={{
                     headerShown: false,
@@ -43,6 +43,6 @@ export default function ProtectedLayout() {
                     }}
                 />
             </Stack>
-        </StreamProvider>
+        </ChannelProvider>
     )
 }

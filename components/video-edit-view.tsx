@@ -19,7 +19,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as VideoThumbnails from 'expo-video-thumbnails'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
-import { useStream } from '@/contexts/recording.context'
+import { useChannel } from '@/contexts/channel.context'
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native'
 
 import { supabase } from '@/lib/supabase.client'
@@ -65,7 +65,7 @@ export function VideoEditView({ videoId }: VideoEditViewProps) {
     const router = useRouter()
     const { referrer } = useLocalSearchParams<{ referrer?: string }>()
     const isFromPostRecording = referrer === 'post-recording'
-    const { setIsStreaming } = useStream()
+    const { setIsStreaming } = useChannel()
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [video, setVideo] = React.useState<VideoMetadata | null>(null)

@@ -6,7 +6,7 @@ import { BlurView } from 'expo-blur'
 import { Tabs } from 'expo-router'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
-import { useStream } from '@/contexts/recording.context'
+import { useChannel } from '@/contexts/channel.context'
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -30,7 +30,9 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
     const theme = useTheme()
-    const { isStreaming, isEditing } = useStream()
+    const {
+        state: { isStreaming, isEditing },
+    } = useChannel()
 
     return (
         <Tabs
