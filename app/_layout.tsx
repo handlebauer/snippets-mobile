@@ -11,7 +11,7 @@ import {
 
 import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
-import * as SplashScreen from 'expo-splash-screen'
+// import * as SplashScreen from 'expo-splash-screen'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 
 import { SupabaseProvider } from '@/contexts/supabase.context'
@@ -24,6 +24,12 @@ import {
 
 import { useColorScheme } from '@/components/base/use-color-scheme'
 
+// SplashScreen.preventAutoHideAsync()
+// SplashScreen.setOptions({
+//     duration: 1000,
+//     fade: true,
+// })
+
 export {
     // Catch any errors thrown by the Layout component.
     ErrorBoundary,
@@ -34,7 +40,7 @@ export const unstable_settings = {
 }
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync()
+// SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
     const [loaded, error] = useFonts({
@@ -48,11 +54,11 @@ export default function RootLayout() {
         if (error) throw error
     }, [error])
 
-    useEffect(() => {
-        if (loaded) {
-            SplashScreen.hideAsync()
-        }
-    }, [loaded])
+    // useEffect(() => {
+    //     if (loaded) {
+    //         SplashScreen.hideAsync()
+    //     }
+    // }, [loaded])
 
     const colorScheme = useColorScheme()
 

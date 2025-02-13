@@ -43,6 +43,13 @@ export default {
                     initialOrientation: 'DEFAULT',
                 },
             ],
+            // [
+            //     'expo-splash-screen',
+            //     {
+            //         backgroundColor: '#1c1c1e',
+            //         image: './assets/images/splash-icon.png',
+            //     },
+            // ],
         ],
         experiments: {
             typedRoutes: true,
