@@ -1,11 +1,19 @@
 import React from 'react'
-import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import {
+    Animated,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    View,
+} from 'react-native'
 import CodeHighlighter from 'react-native-code-highlighter'
 import { Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { atomOneDarkReasonable } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 
 import { useRouter } from 'expo-router'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { RecordingTimer } from '@/components/recording-timer'
 import { useChannel } from '@/contexts/channel.context'
@@ -40,6 +48,7 @@ interface EditorBatch {
 
 interface RecordingState {
     isRecording: boolean
+    isNarrating: boolean
     recordingStartTime: number | null
     initialContent: string | null
 }
@@ -60,12 +69,38 @@ interface CodePreviewProps {
     sessionCode: string | null
 }
 
+interface EditorRecordingStartedPayload {
+    timestamp: number
+    content: string
+    initialContent: string
+}
+
+interface EditorRecordingFinishedPayload {
+    timestamp: number
+    content: string
+    initialContent: string
+    events: EditorEvent[]
+}
+
+interface EditorBatchPayload {
+    events: EditorEvent[]
+}
+
+// Constants
+const INITIAL_RECORDING_STATE: RecordingState = {
+    isRecording: false,
+    isNarrating: false,
+    recordingStartTime: null,
+    initialContent: null,
+}
+
 function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
     const {
         setIsEditing,
         setRecordingStartTime,
-        state: { isRecording, recordingStartTime },
+        state: { isRecording, recordingStartTime, isNarrating },
         setIsRecording,
+        setIsNarrating,
     } = useChannel()
     const { isLandscape } = useScreenOrientation()
     const [recordedEvents, setRecordedEvents] = React.useState<EditorEvent[]>(
@@ -74,11 +109,9 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
     const router = useRouter()
 
     // Keep recording state in a ref to avoid effect recreation
-    const recordingStateRef = React.useRef<RecordingState>({
-        isRecording,
-        recordingStartTime,
-        initialContent: null,
-    })
+    const recordingStateRef = React.useRef<RecordingState>(
+        INITIAL_RECORDING_STATE,
+    )
 
     // Update ref when recording state changes
     React.useEffect(() => {
@@ -86,6 +119,7 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
             isRecording,
             recordingStartTime,
             initialContent: recordingStateRef.current.initialContent,
+            isNarrating: recordingStateRef.current.isNarrating,
         }
     }, [isRecording, recordingStartTime])
 
@@ -112,109 +146,73 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
         }
     }, [channel])
 
-    // Set up event recording as soon as possible
-    React.useEffect(() => {
-        if (!channel) return
-
-        console.log('🎥 Setting up event recording')
-
-        // Handle recording started from web app
-        const handleRecordingStarted = (payload: {
-            payload: {
-                content: string
-                initialContent: string
-                timestamp: number
-            }
-        }) => {
-            console.log('🎥 Recording started from web app:', {
-                timestamp: new Date(payload.payload.timestamp).toISOString(),
-                contentLength: payload.payload.content.length,
-                initialContentLength: payload.payload.initialContent.length,
-                content: payload.payload.content.slice(0, 100) + '...',
-                initialContent:
-                    payload.payload.initialContent.slice(0, 100) + '...',
-            })
+    // Channel event handlers
+    const handleRecordingStarted = React.useCallback(
+        ({ payload }: { payload: EditorRecordingStartedPayload }) => {
+            console.log('📱 [CodePreview] Recording started from web app')
             setIsRecording(true)
-            setRecordingStartTime(payload.payload.timestamp)
-            // Set the initial content to what was in the editor before recording started
-            recordingStateRef.current.initialContent = payload.payload.content
-        }
+            setRecordingStartTime(payload.timestamp)
+            recordingStateRef.current.initialContent = payload.initialContent
+        },
+        [setIsRecording, setRecordingStartTime],
+    )
 
-        // Handle recording finished from web app
-        const handleRecordingFinished = (payload: {
-            payload: {
-                content: string
-                initialContent: string
-                timestamp: number
-                events: EditorEvent[]
-            }
-        }) => {
-            console.log('🎬 Recording finished from web app:', {
-                timestamp: new Date(payload.payload.timestamp).toISOString(),
-                contentLength: payload.payload.content.length,
-                eventCount: payload.payload.events.length,
-            })
+    const handleRecordingFinished = React.useCallback(
+        ({ payload }: { payload: EditorRecordingFinishedPayload }) => {
+            console.log('📱 [CodePreview] Recording finished from web app')
             setIsRecording(false)
             setRecordingStartTime(null)
-
-            // Navigate to edit view with the received events
-            if (payload.payload.events.length > 0) {
-                console.log('🎬 Navigating to edit view with:', {
-                    eventCount: payload.payload.events.length,
-                    finalContent: payload.payload.content.slice(0, 100) + '...',
-                    initialState:
-                        payload.payload.initialContent.slice(0, 100) + '...',
-                })
-                router.push({
-                    pathname: '/(protected)/editor-edit',
-                    params: {
-                        events: JSON.stringify(payload.payload.events),
-                        finalContent: payload.payload.content,
-                        initialState: payload.payload.initialContent,
-                        isFromRecordingSession: 'true',
-                        code: sessionCode || '',
-                    },
-                })
-            } else {
-                console.warn(
-                    '⚠️ No events received from web app, skipping navigation',
-                )
-            }
-        }
-
-        const handleEditorBatch = (payload: {
-            payload: EditorBatch
-            event: string
-        }) => {
-            const batch = payload.payload
-            const { isRecording, recordingStartTime } =
-                recordingStateRef.current
-
-            console.log('📥 Received editor batch:', {
-                event: payload.event,
-                batchSize: batch.events.length,
-                timeStart: batch.timestamp_start,
-                timeEnd: batch.timestamp_end,
-                isRecording,
-                recordingStartTime,
-            })
-
-            // Only record events if we're recording
-            if (isRecording && recordingStartTime) {
-                const relativeEvents = batch.events.map(event => ({
+            // Process recorded events
+            if (payload.events) {
+                const relativeEvents = payload.events.map(event => ({
                     ...event,
-                    timestamp: event.timestamp - recordingStartTime,
+                    timestamp:
+                        event.timestamp -
+                        (recordingStateRef.current.recordingStartTime || 0),
                 }))
-                console.log('📝 Adding events to recording:', {
-                    count: relativeEvents.length,
-                    firstEvent: relativeEvents[0],
-                    lastEvent: relativeEvents[relativeEvents.length - 1],
-                })
                 setRecordedEvents(prev => [...prev, ...relativeEvents])
             }
+        },
+        [setIsRecording, setRecordingStartTime],
+    )
+
+    const handleNarrationStarted = React.useCallback(() => {
+        console.log('🎙️ [CodePreview] Narration started from web app')
+        setIsNarrating(true)
+        // TODO: Start the narration service here
+    }, [setIsNarrating])
+
+    const handleNarrationStopped = React.useCallback(() => {
+        console.log('🎙️ [CodePreview] Narration stopped from web app')
+        setIsNarrating(false)
+        // TODO: Stop the narration service here
+    }, [setIsNarrating])
+
+    const handleEditorBatch = React.useCallback(
+        ({ payload }: { payload: EditorBatchPayload }) => {
+            if (payload.events) {
+                const relativeEvents = payload.events.map(event => ({
+                    ...event,
+                    timestamp:
+                        event.timestamp -
+                        (recordingStateRef.current.recordingStartTime || 0),
+                }))
+                setRecordedEvents(prev => [...prev, ...relativeEvents])
+            }
+        },
+        [],
+    )
+
+    // Set up channel subscriptions
+    React.useEffect(() => {
+        if (!channel) {
+            console.log('⚠️ [CodePreview] No channel available')
+            return
         }
 
-        // Set up subscriptions
+        console.log('🔄 [CodePreview] Setting up channel event handlers')
+
+        // Subscribe to events
         const recordingStartSubscription = channel.on(
             'broadcast',
             { event: 'editor_recording_started' },
@@ -233,16 +231,37 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
             handleEditorBatch,
         )
 
+        const narrationStartSubscription = channel.on(
+            'broadcast',
+            { event: 'narration_started' },
+            handleNarrationStarted,
+        )
+
+        const narrationStopSubscription = channel.on(
+            'broadcast',
+            { event: 'narration_stopped' },
+            handleNarrationStopped,
+        )
+
+        // Cleanup function
         return () => {
-            // Only cleanup if the channel itself is changing
             console.log(
                 '🎬 Cleaning up event recording subscription (channel changed)',
             )
             recordingStartSubscription.unsubscribe()
             recordingFinishSubscription.unsubscribe()
             batchSubscription.unsubscribe()
+            narrationStartSubscription.unsubscribe()
+            narrationStopSubscription.unsubscribe()
         }
-    }, [channel, router, sessionCode])
+    }, [
+        channel,
+        handleRecordingStarted,
+        handleRecordingFinished,
+        handleEditorBatch,
+        handleNarrationStarted,
+        handleNarrationStopped,
+    ])
 
     const { innerStyle, handleRecordPress: onRecordButtonPress } =
         useRecordButton({
@@ -347,7 +366,21 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <RecordingTimer />
+            <View style={styles.header}>
+                <View style={styles.timerContainer}>
+                    <View style={styles.placeholder} />
+                    <RecordingTimer />
+                    <View style={styles.placeholder}>
+                        {isNarrating && (
+                            <MaterialCommunityIcons
+                                name="microphone"
+                                size={20}
+                                color="#A855F7"
+                            />
+                        )}
+                    </View>
+                </View>
+            </View>
             <ScrollView
                 style={styles.codeContainer}
                 contentContainerStyle={styles.codeContent}
@@ -378,7 +411,7 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
                     </CodeHighlighter>
                 ) : (
                     <Text style={[styles.codeText, { fontFamily: 'FiraCode' }]}>
-                        // Waiting for code changes...
+                        {''}
                     </Text>
                 )}
             </ScrollView>
@@ -507,24 +540,30 @@ const styles = StyleSheet.create({
         backgroundColor: '#1A1A1A',
     },
     header: {
+        backgroundColor: '#1A1A1A',
+        height: Platform.OS === 'ios' ? 40 : 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    timerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#1A1A1A',
-        borderBottomWidth: 1,
-        borderBottomColor: '#2A2A2A',
-        gap: 12,
+        justifyContent: 'space-between',
+        width: 120,
     },
-    headerText: {
-        color: '#FFFFFF',
-        fontWeight: '600',
+    placeholder: {
+        width: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     codeContainer: {
         flex: 1,
         backgroundColor: '#1A1A1A',
     },
     codeContent: {
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingTop: 6,
     },
     codeText: {
         color: '#CCCCCC',

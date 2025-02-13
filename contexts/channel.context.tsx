@@ -27,6 +27,7 @@ interface ChannelState {
     isEditing: boolean
     isRecording: boolean
     isScreenRecording: boolean
+    isNarrating: boolean
     recordingStartTime: number | null
     recordingDuration: string
 }
@@ -44,6 +45,7 @@ interface ChannelContextType {
     setIsEditing: (isEditing: boolean) => void
     setIsRecording: (isRecording: boolean) => void
     setIsScreenRecording: (isRecording: boolean) => void
+    setIsNarrating: (isNarrating: boolean) => void
     setRecordingStartTime: (time: number | null) => void
 }
 
@@ -59,6 +61,7 @@ const initialState: ChannelState = {
     isEditing: false,
     isRecording: false,
     isScreenRecording: false,
+    isNarrating: false,
     recordingStartTime: null,
     recordingDuration: '00:00',
 }
@@ -182,6 +185,10 @@ export function ChannelProvider({ children }: { children: React.ReactNode }) {
         setState(prev => ({ ...prev, isScreenRecording }))
     }, [])
 
+    const setIsNarrating = useCallback((isNarrating: boolean) => {
+        setState(prev => ({ ...prev, isNarrating }))
+    }, [])
+
     const setRecordingStartTime = useCallback(
         (recordingStartTime: number | null) => {
             setState(prev => ({ ...prev, recordingStartTime }))
@@ -224,6 +231,7 @@ export function ChannelProvider({ children }: { children: React.ReactNode }) {
                 setIsEditing,
                 setIsRecording,
                 setIsScreenRecording,
+                setIsNarrating,
                 setRecordingStartTime,
             }}
         >
