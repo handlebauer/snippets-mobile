@@ -85,7 +85,7 @@ export function EditorEditView({
     const [durationMs, setDurationMs] = React.useState(0)
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
-    const playbackRef = React.useRef<NodeJS.Timeout | null>(null)
+    const playbackRef = React.useRef<NodeJS.Timer | null>(null)
     const [activeTab, setActiveTab] = React.useState<'code' | 'adjust'>('code')
     const [showMenu, setShowMenu] = React.useState(false)
     const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 })
@@ -100,7 +100,7 @@ export function EditorEditView({
     const [originalTrimEnd, setOriginalTrimEnd] = React.useState(0)
     const [hasChanges, setHasChanges] = React.useState(false)
     const [isTrimming, setIsTrimming] = React.useState(false)
-    const trimChangeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+    const trimChangeTimeoutRef = React.useRef<NodeJS.Timer | null>(null)
     const [showInsightsModal, setShowInsightsModal] = React.useState(false)
     const [insightsLoading, setInsightsLoading] = React.useState(false)
     const [insights, setInsights] = React.useState<CodeInsights | undefined>(

@@ -57,7 +57,7 @@ interface NarrationState {
     sessionStartTime: number | null
     characterChangeCount: number // Track total character changes
     lastEventTime: number | null // Track last event time for pause detection
-    processingTimeoutId: NodeJS.Timeout | null // Track debounce timeout
+    processingTimeoutId: NodeJS.Timer | null // Track debounce timeout
     currentContent: string // Track current content state
     isProcessing: boolean // Track if we're currently processing
 }
