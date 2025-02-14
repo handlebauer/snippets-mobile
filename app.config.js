@@ -43,18 +43,12 @@ export default {
                     initialOrientation: 'DEFAULT',
                 },
             ],
-            // [
-            //     'expo-splash-screen',
-            //     {
-            //         backgroundColor: '#1c1c1e',
-            //         image: './assets/images/splash-icon.png',
-            //     },
-            // ],
         ],
         experiments: {
             typedRoutes: true,
             reactServerFunctions: true,
         },
+        assets: ['./assets/models/kokoro.onnx', './assets/models/voices.bin'],
         extra: {
             supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
             supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
