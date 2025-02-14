@@ -64,12 +64,11 @@ interface NarrationState {
 
 // Constants for narration thresholds
 const NARRATION_THRESHOLDS = {
-    MIN_EVENTS: 5, // Minimum events before considering narration
-    MIN_CHAR_CHANGES: 10, // Minimum character changes to consider a pause significant
-    SIGNIFICANT_CHAR_CHANGES: 30, // Number of character changes that warrant immediate narration
-    TYPING_PAUSE_MS: 2000, // Consider a pause after 2s of no typing
-    MAX_TIME_GAP_MS: 5000, // Force narration after 5s regardless of changes
-    DEBOUNCE_MS: 2000, // Wait for 2s of inactivity before processing
+    MIN_CHAR_CHANGES: 20, // Minimum character changes to consider a pause significant
+    SIGNIFICANT_CHAR_CHANGES: 200, // Significantly increased to avoid interrupting active typing
+    TYPING_PAUSE_MS: 2_000, // Increased pause detection to ensure user has actually stopped typing
+    MAX_TIME_GAP_MS: 5_000, // Force narration after 5s regardless of changes
+    DEBOUNCE_MS: 2_000, // Wait for 2s of inactivity before processing
 } as const
 
 const INITIAL_STATE: NarrationState = {
@@ -243,7 +242,6 @@ export function useNarration(channel: RealtimeChannel | null) {
 
         // Check if we have enough meaningful content
         if (
-            state.eventBuffer.length < NARRATION_THRESHOLDS.MIN_EVENTS &&
             state.characterChangeCount < NARRATION_THRESHOLDS.MIN_CHAR_CHANGES
         ) {
             return
