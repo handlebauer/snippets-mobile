@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import * as Speech from 'expo-speech'
+import { Audio } from 'expo-av'
 
 import { useChannel } from '@/contexts/channel.context'
 
@@ -50,6 +50,16 @@ export interface NarrationPayload {
     eventGroup: EventGroup
 }
 
+interface NarrationResponse {
+    narration: string
+    confidence: number
+    audioData: string // Base64 encoded audio data
+    metadata?: {
+        tone: 'neutral' | 'technical' | 'educational'
+        complexity: 'simple' | 'moderate' | 'complex'
+    }
+}
+
 interface NarrationState {
     isNarrating: boolean
     eventBuffer: EditorEvent[]
@@ -60,6 +70,7 @@ interface NarrationState {
     processingTimeoutId: NodeJS.Timer | null // Track debounce timeout
     currentContent: string // Track current content state
     isProcessing: boolean // Track if we're currently processing
+    currentSound: Audio.Sound | null
 }
 
 // Constants for narration thresholds
@@ -81,6 +92,7 @@ const INITIAL_STATE: NarrationState = {
     processingTimeoutId: null,
     currentContent: '',
     isProcessing: false,
+    currentSound: null,
 }
 
 // Calculate character changes for an event
@@ -228,6 +240,44 @@ export function useNarration(channel: RealtimeChannel | null) {
         [],
     )
 
+    // Function to play audio from base64 data
+    const playAudio = useCallback(async (base64Audio: string) => {
+        try {
+            // Stop any currently playing sound
+            if (stateRef.current.currentSound) {
+                await stateRef.current.currentSound.unloadAsync()
+                stateRef.current.currentSound = null
+            }
+
+            // Create data URI for the audio
+            const dataUri = `data:audio/mp3;base64,${base64Audio}`
+
+            // Create and load the sound directly from the data URI
+            const { sound } = await Audio.Sound.createAsync(
+                { uri: dataUri },
+                { shouldPlay: true },
+            )
+            stateRef.current.currentSound = sound
+
+            // Clean up after playback
+            sound.setOnPlaybackStatusUpdate(async status => {
+                if (
+                    'isLoaded' in status &&
+                    status.isLoaded &&
+                    status.didJustFinish
+                ) {
+                    await sound.unloadAsync()
+                    stateRef.current.currentSound = null
+                }
+            })
+        } catch (err) {
+            console.error('Failed to play audio:', err)
+            setError(
+                err instanceof Error ? err : new Error('Failed to play audio'),
+            )
+        }
+    }, [])
+
     // Process events in the buffer
     const processEventBuffer = useCallback(async () => {
         const state = stateRef.current
@@ -266,7 +316,9 @@ export function useNarration(channel: RealtimeChannel | null) {
             })
 
             // Generate narration
-            const response = await generateNarration(payload)
+            const response = (await generateNarration(
+                payload,
+            )) as NarrationResponse
 
             console.log('🎙️ [useNarration] Received narration:', {
                 confidence: response.confidence,
@@ -274,12 +326,8 @@ export function useNarration(channel: RealtimeChannel | null) {
                 complexity: response.metadata?.complexity,
             })
 
-            // Speak the narration
-            Speech.speak(response.narration, {
-                language: 'en',
-                pitch: 1.0,
-                rate: 0.9,
-            })
+            // Play the audio
+            await playAudio(response.audioData)
 
             // Update state with new narration
             setLastNarration(response.narration)
@@ -299,7 +347,7 @@ export function useNarration(channel: RealtimeChannel | null) {
             state.processingTimeoutId = null
             state.isProcessing = false
         }
-    }, [channel])
+    }, [playAudio])
 
     // Schedule processing with debounce
     const scheduleProcessing = useCallback(() => {
@@ -403,6 +451,9 @@ export function useNarration(channel: RealtimeChannel | null) {
         return () => {
             if (stateRef.current.processingTimeoutId) {
                 clearTimeout(stateRef.current.processingTimeoutId)
+            }
+            if (stateRef.current.currentSound) {
+                stateRef.current.currentSound.unloadAsync()
             }
         }
     }, [])
