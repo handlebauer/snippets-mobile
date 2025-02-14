@@ -19,6 +19,7 @@ import { RecordingTimer } from '@/components/recording-timer'
 import { useChannel } from '@/contexts/channel.context'
 
 import { PairingView } from '@/components/session/pairing-view'
+import { useNarration } from '@/hooks/use-narration'
 import { useRecordButton } from '@/hooks/use-record-button'
 import { useScreenOrientation } from '@/hooks/use-screen-orientation'
 
@@ -146,6 +147,9 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
         }
     }, [channel])
 
+    // Add narration hook
+    const { addEvents } = useNarration(channel)
+
     // Channel event handlers
     const handleRecordingStarted = React.useCallback(
         ({ payload }: { payload: EditorRecordingStartedPayload }) => {
@@ -172,8 +176,21 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
                 }))
                 setRecordedEvents(prev => [...prev, ...relativeEvents])
             }
+
+            // Navigate to edit view with the recorded events
+            router.push({
+                pathname: '/(protected)/editor-edit',
+                params: {
+                    events: JSON.stringify(recordedEvents),
+                    finalContent: payload.content,
+                    initialState:
+                        recordingStateRef.current.initialContent || '',
+                    isFromRecordingSession: 'true',
+                    code: sessionCode || '',
+                },
+            })
         },
-        [setIsRecording, setRecordingStartTime],
+        [setIsRecording, setRecordingStartTime, router],
     )
 
     const handleNarrationStarted = React.useCallback(() => {
@@ -198,9 +215,12 @@ function CodePreview({ content, channel, sessionCode }: CodePreviewProps) {
                         (recordingStateRef.current.recordingStartTime || 0),
                 }))
                 setRecordedEvents(prev => [...prev, ...relativeEvents])
+
+                // Add events to narration buffer
+                addEvents(relativeEvents)
             }
         },
-        [],
+        [addEvents],
     )
 
     // Set up channel subscriptions

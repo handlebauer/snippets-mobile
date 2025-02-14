@@ -2,6 +2,8 @@ import Constants from 'expo-constants'
 
 import { EditorEvent } from '@/types/recordings'
 
+import type { NarrationPayload } from '@/hooks/use-narration'
+
 const API_URL = Constants.expoConfig?.extra?.apiUrl as string
 
 if (!API_URL) {
@@ -47,6 +49,15 @@ interface GenerateInsightsRequest {
     }
 }
 
+interface NarrationResponse {
+    narration: string
+    confidence: number
+    metadata?: {
+        tone: 'neutral' | 'technical' | 'educational'
+        complexity: 'simple' | 'moderate' | 'complex'
+    }
+}
+
 export async function generateInsights({
     pairingCode,
     data,
@@ -71,6 +82,30 @@ export async function generateInsights({
         return response.json()
     } catch (error) {
         console.error('Error generating insights:', error)
+        throw error
+    }
+}
+
+export async function generateNarration(
+    payload: NarrationPayload,
+): Promise<NarrationResponse> {
+    try {
+        const response = await fetch(`${API_URL}/api/editor/narrate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        })
+
+        if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.message || 'Failed to generate narration')
+        }
+
+        return response.json()
+    } catch (error) {
+        console.error('Error generating narration:', error)
         throw error
     }
 }
