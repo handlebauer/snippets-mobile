@@ -15,7 +15,7 @@ export function useVideoTrim({
     const [originalTrimEnd, setOriginalTrimEnd] = useState(duration)
     const [hasChanges, setHasChanges] = useState(isFromPostRecording)
     const [isTrimming, setIsTrimming] = useState(false)
-    const trimChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const trimChangeTimeoutRef = useRef<NodeJS.Timer | null>(null)
     const isInitializedRef = useRef(false)
 
     // Handle duration updates
