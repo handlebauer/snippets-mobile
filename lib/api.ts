@@ -90,6 +90,12 @@ export async function generateNarration(
     payload: NarrationPayload,
 ): Promise<NarrationResponse> {
     try {
+        console.log('📤 [api] Sending narration request:', {
+            hasLastNarration: 'lastNarration' in payload,
+            lastNarrationLength: payload.lastNarration?.length,
+            eventCount: payload.eventGroup.events.length,
+        })
+
         const response = await fetch(`${API_URL}/api/editor/narrate`, {
             method: 'POST',
             headers: {
@@ -103,7 +109,14 @@ export async function generateNarration(
             throw new Error(error.message || 'Failed to generate narration')
         }
 
-        return response.json()
+        const data = await response.json()
+        console.log('📥 [api] Received narration response:', {
+            confidence: data.confidence,
+            narrationLength: data.narration.length,
+            tone: data.metadata?.tone,
+        })
+
+        return data
     } catch (error) {
         console.error('Error generating narration:', error)
         throw error

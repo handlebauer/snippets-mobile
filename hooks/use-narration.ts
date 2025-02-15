@@ -48,6 +48,7 @@ export interface EventGroup {
 export interface NarrationPayload {
     timestamp: number
     eventGroup: EventGroup
+    lastNarration?: string
 }
 
 interface NarrationResponse {
@@ -179,6 +180,7 @@ function extractCodeContext(
 function prepareNarrationPayload(
     events: EditorEvent[],
     currentContent: string,
+    lastNarration?: string,
 ): NarrationPayload {
     const eventGroup: EventGroup = {
         events,
@@ -200,11 +202,13 @@ function prepareNarrationPayload(
     return {
         timestamp: Date.now(),
         eventGroup,
+        lastNarration,
     }
 }
 
 export function useNarration(channel: RealtimeChannel | null) {
     const stateRef = useRef<NarrationState>(INITIAL_STATE)
+    const lastNarrationRef = useRef<string | null>(null)
     const [lastNarration, setLastNarration] = useState<string | null>(null)
     const [error, setError] = useState<Error | null>(null)
     const {
@@ -221,6 +225,11 @@ export function useNarration(channel: RealtimeChannel | null) {
             )
         }
     }, [recordingStartTime])
+
+    // Update lastNarrationRef when lastNarration state changes
+    useEffect(() => {
+        lastNarrationRef.current = lastNarration
+    }, [lastNarration])
 
     // Normalize event timestamps relative to session start
     const normalizeEvents = useCallback(
@@ -301,10 +310,11 @@ export function useNarration(channel: RealtimeChannel | null) {
             // Mark as processing to prevent duplicate calls
             state.isProcessing = true
 
-            // Prepare narration payload
+            // Use lastNarrationRef instead of lastNarration state
             const payload = prepareNarrationPayload(
                 state.eventBuffer,
                 state.currentContent,
+                lastNarrationRef.current || undefined,
             )
 
             console.log('🎙️ [useNarration] Sending events for narration:', {
@@ -313,6 +323,8 @@ export function useNarration(channel: RealtimeChannel | null) {
                 timeSinceLastProcess: state.lastProcessedTime
                     ? now - state.lastProcessedTime
                     : 'initial',
+                hasLastNarration: !!lastNarrationRef.current,
+                lastNarrationText: lastNarrationRef.current,
             })
 
             // Generate narration
@@ -324,14 +336,17 @@ export function useNarration(channel: RealtimeChannel | null) {
                 confidence: response.confidence,
                 tone: response.metadata?.tone,
                 complexity: response.metadata?.complexity,
+                narrationText: response.narration,
             })
 
             // Play the audio
             await playAudio(response.audioData)
 
-            // Update state with new narration
-            setLastNarration(response.narration)
-            setError(null)
+            // Update state with new narration outside of processEventBuffer
+            queueMicrotask(() => {
+                setLastNarration(response.narration)
+                setError(null)
+            })
         } catch (err) {
             console.error('Failed to generate narration:', err)
             setError(
@@ -347,7 +362,7 @@ export function useNarration(channel: RealtimeChannel | null) {
             state.processingTimeoutId = null
             state.isProcessing = false
         }
-    }, [playAudio])
+    }, [playAudio]) // Remove lastNarration from dependencies
 
     // Schedule processing with debounce
     const scheduleProcessing = useCallback(() => {
